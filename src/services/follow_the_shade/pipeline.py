@@ -663,7 +663,7 @@ def _parse_time_window(
 ) -> tuple[datetime, datetime, Period] | None:
     date = _parse_date(query, now)
     explicit = re.search(
-        r"(?:from\s*)?(\d{1,2})(?::(\d{2}))?\s*(am|pm)?\s*(?:-|to|until)\s*(\d{1,2})(?::(\d{2}))?\s*(am|pm)?",
+        r"(?:from\s*)?(\d{1,2})(?::(\d{2}))?\s*(am|pm)?\s*(?:-|to|until|and)\s*(\d{1,2})(?::(\d{2}))?\s*(am|pm)?",
         query,
     )
     if explicit:

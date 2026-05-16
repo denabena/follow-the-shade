@@ -1,3 +1,4 @@
+from app.user_preferences_store import UserPreferencesStore
 from services.follow_the_shade.preference_query import enrich_query_with_preferences
 
 
@@ -27,3 +28,16 @@ def test_enrich_query_keeps_explicit_request() -> None:
         },
     )
     assert enriched == query
+
+
+def test_user_preferences_store_update_persists_without_deadlock(tmp_path) -> None:
+    store = UserPreferencesStore(str(tmp_path / "user_preferences.json"))
+
+    saved = store.update(
+        "user_1",
+        {"exposure_preference": "sun", "favorite_areas": ["Bacvice"]},
+    )
+    reloaded = UserPreferencesStore(str(tmp_path / "user_preferences.json"))
+
+    assert saved["exposure_preference"] == "sun"
+    assert reloaded.get("user_1")["favorite_areas"] == ["Bacvice"]

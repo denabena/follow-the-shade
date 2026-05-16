@@ -55,6 +55,29 @@ GOOGLE_PLACES_API_KEY=
 
 `GOOGLE_PLACES_API_KEY` is the preferred server-side key for Google Places calls. If it is unset, the backend falls back to `GOOGLE_MAPS_API_KEY`.
 
+## Email Notifications
+
+Users can schedule recurring email digests from Settings. The FastAPI process runs an in-process APScheduler loop, reuses the existing shade pipeline, and sends through Resend.
+
+```env
+RESEND_API_KEY=
+RESEND_FROM_EMAIL=Follow the Shade <noreply@example.com>
+CLERK_SECRET_KEY=
+NOTIFICATIONS_ENABLED=false
+NOTIFICATIONS_DRY_RUN=true
+NOTIFICATIONS_CHECK_INTERVAL_SECONDS=60
+NOTIFICATIONS_SCHEDULES_PATH=data/notification_schedules.json
+```
+
+Local dry-run demo:
+
+1. Set `FOLLOW_THE_SHADE_DATA_MODE=mock`, `NOTIFICATIONS_ENABLED=true`, and `NOTIFICATIONS_DRY_RUN=true`.
+2. Sign in, open Settings, enable notifications, then pick days, time, area, window, and sun/shade preference.
+3. Click "Send test email" to render the email in backend logs without calling Resend.
+4. Set `NOTIFICATIONS_DRY_RUN=false` and provide `RESEND_API_KEY` to send real email.
+
+Before production, add unsubscribe links and move schedules to a shared database if the backend runs more than one process.
+
 ## Run Locally
 
 Install frontend dependencies:

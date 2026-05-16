@@ -3,17 +3,17 @@ from __future__ import annotations
 from fastapi import Depends, HTTPException, Request
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
-from app.auth.clerk import user_id_from_token
+from app.auth.clerk import user_id_from_token_async
 
 _bearer = HTTPBearer(auto_error=False)
 
 
-def get_optional_user_id(
+async def get_optional_user_id(
     credentials: HTTPAuthorizationCredentials | None = Depends(_bearer),
 ) -> str | None:
     if credentials is None or credentials.scheme.lower() != "bearer":
         return None
-    return user_id_from_token(credentials.credentials)
+    return await user_id_from_token_async(credentials.credentials)
 
 
 def require_user_id(

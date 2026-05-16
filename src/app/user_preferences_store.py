@@ -33,7 +33,7 @@ class UserPreferencesStore:
 
     def update(self, user_id: str, patch: dict[str, Any]) -> dict[str, Any]:
         with self._lock:
-            current = self.get(user_id)
+            current = {**DEFAULT_PREFERENCES, **self._data.get(user_id, {})}
             current.update(patch)
             self._data[user_id] = current
             self._persist()

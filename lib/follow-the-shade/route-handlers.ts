@@ -11,6 +11,7 @@ const SPEECH_CONTEXT_TERMS = [
   "sunny terrace",
   "outdoor seating",
 ];
+const BACKEND_PROXY_TIMEOUT_MS = 8_000;
 
 export async function handleFinalAnswer(
   request: Request,
@@ -95,6 +96,35 @@ export async function proxyMePreferences(
   return proxyToBackend("/me/preferences", undefined, bearerToken, "GET");
 }
 
+export async function proxyMeNotifications(
+  request: Request,
+  bearerToken?: string | null,
+  options?: { bodyOverride?: unknown; test?: boolean },
+): Promise<Response> {
+  if (!shouldProxyToBackend()) {
+    return backendNotConfigured();
+  }
+
+  const path = options?.test ? "/me/notifications/test" : "/me/notifications";
+  if (request.method === "GET") {
+    return proxyToBackend(path, undefined, bearerToken, "GET");
+  }
+
+  if (request.method === "PUT" || request.method === "POST") {
+    let body: unknown = options?.bodyOverride;
+    if (body === undefined) {
+      try {
+        body = await request.json();
+      } catch {
+        body = {};
+      }
+    }
+    return proxyToBackend(path, body, bearerToken, request.method);
+  }
+
+  return Response.json({ error: "method_not_allowed" }, { status: 405 });
+}
+
 function shouldProxyToBackend(): boolean {
   return Boolean(process.env.FOLLOW_THE_SHADE_API_BASE_URL);
 }
@@ -133,15 +163,35 @@ async function proxyToBackend(
   const httpMethod =
     method ?? (body === undefined ? "GET" : "POST");
 
-  const upstream = await fetch(`${baseUrl.replace(/\/$/, "")}${path}`, {
-    method: httpMethod,
-    headers,
-    body:
-      body === undefined || httpMethod === "GET"
-        ? undefined
-        : JSON.stringify(body),
-    cache: "no-store",
-  });
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), BACKEND_PROXY_TIMEOUT_MS);
+  let upstream: Response;
+  try {
+    upstream = await fetch(`${baseUrl.replace(/\/$/, "")}${path}`, {
+      method: httpMethod,
+      headers,
+      body:
+        body === undefined || httpMethod === "GET"
+          ? undefined
+          : JSON.stringify(body),
+      cache: "no-store",
+      signal: controller.signal,
+    });
+  } catch (error) {
+    const timedOut =
+      error instanceof DOMException && error.name === "AbortError";
+    return Response.json(
+      {
+        error: timedOut ? "backend_timeout" : "backend_unreachable",
+        message: timedOut
+          ? "The backend took too long to respond."
+          : "Could not reach the backend.",
+      },
+      { status: timedOut ? 504 : 502 },
+    );
+  } finally {
+    clearTimeout(timeout);
+  }
   const text = await upstream.text();
 
   return new Response(text, {

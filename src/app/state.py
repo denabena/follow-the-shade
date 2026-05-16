@@ -11,6 +11,8 @@ class AppState:
     upstream_cache: Any
     agent: Any
     preferences_store: Any
+    notification_store: Any
+    notification_dispatcher: Any | None
 
 
 def get_state(request: Request) -> AppState:

@@ -43,9 +43,19 @@ class Settings(BaseSettings):
     LOG_LEVEL: str = "INFO"
     ACCEPT_LOG_LEVEL: str = "INFO"
 
+    RESEND_API_KEY: Optional[str] = None
+    RESEND_FROM_EMAIL: str = "Follow the Shade <noreply@followtheshade.dev>"
+    APP_PUBLIC_URL: str = "http://localhost:3000"
+    NOTIFICATIONS_ENABLED: bool = False
+    NOTIFICATIONS_DRY_RUN: bool = True
+    NOTIFICATIONS_CHECK_INTERVAL_SECONDS: int = 60
+    NOTIFICATIONS_SCHEDULES_PATH: str = "data/notification_schedules.json"
+
+    CLERK_SECRET_KEY: Optional[str] = None
     CLERK_ISSUER: Optional[str] = None
     CLERK_JWKS_URL: Optional[str] = None
     CLERK_JWT_PUBLIC_KEY: Optional[str] = None
+    CLERK_JWKS_TIMEOUT_SECONDS: float = 3.0
     USER_PREFERENCES_PATH: str = "data/user_preferences.json"
 
     @property
