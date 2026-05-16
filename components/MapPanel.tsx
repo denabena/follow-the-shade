@@ -136,6 +136,20 @@ const cafeNameInitials = (name: string): string => {
   return (parts[0]![0]! + parts[1]![0]!).toUpperCase()
 }
 
+/** Start fetching proxy thumbnails as soon as results arrive (cache hits when popup opens). */
+function preloadPlacePhotos(cafes: Iterable<Cafe>) {
+  if (typeof Image === "undefined") return
+  const seen = new Set<string>()
+  for (const cafe of cafes) {
+    const p = cafe.place_photo_p
+    if (!p || seen.has(p)) continue
+    seen.add(p)
+    const img = new Image()
+    img.decoding = "async"
+    img.src = `/places/photo?p=${encodeURIComponent(p)}`
+  }
+}
+
 /** Walking directions in Google Maps; include user [lng,lat] as origin when known. */
 const googleMapsDirectionsUrl = (
   cafe: Cafe,
@@ -190,8 +204,9 @@ const buildCafePopupDom = (
     img.alt = ""
     img.className =
       "relative z-0 block h-full w-full max-w-full object-cover object-center"
-    img.loading = "lazy"
+    img.loading = "eager"
     img.decoding = "async"
+    img.fetchPriority = "high"
 
     let dismissed = false
     const dismissLoader = () => {
@@ -698,6 +713,7 @@ const MapPanel = forwardRef<MapPanelHandle, Props>(function MapPanel(
         return shade.instance.isPositionInSun(point.x, point.y)
       },
       setResults: (results, preference) => {
+        preloadPlacePhotos(results.map((r) => r.cafe))
         const map = mapRef.current
         if (!map) return
         cafeMarkersGenerationRef.current += 1
