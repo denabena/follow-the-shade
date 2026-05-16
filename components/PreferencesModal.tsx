@@ -410,7 +410,7 @@ export default function PreferencesModal({ open, onOpenChange }: Props) {
                 </h2>
                 <label
                   className={cn(
-                    "flex cursor-pointer items-start gap-3 rounded-xl border border-ink/10 bg-bone/50 px-3.5 py-3 transition-colors duration-200 hover:border-terracotta/25 hover:bg-bone/80",
+                    "flex cursor-pointer items-start gap-3 rounded-xl border border-ink/10 bg-bone/50 px-3.5 py-2.5 transition-colors duration-200 hover:border-terracotta/25 hover:bg-bone/80",
                   )}
                 >
                   <input
@@ -427,7 +427,7 @@ export default function PreferencesModal({ open, onOpenChange }: Props) {
                 </label>
                 <label
                   className={cn(
-                    "flex cursor-pointer items-start gap-2.5 rounded-lg border border-ink/10 bg-bone/50 px-3 py-2 transition-colors duration-200 hover:border-terracotta/25 hover:bg-bone/80",
+                    "flex cursor-pointer items-start gap-3 rounded-xl border border-ink/10 bg-bone/50 px-3.5 py-2.5 transition-colors duration-200 hover:border-terracotta/25 hover:bg-bone/80",
                   )}
                 >
                   <input

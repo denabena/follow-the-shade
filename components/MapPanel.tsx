@@ -19,6 +19,7 @@ import type { Cafe, CafeResult, IntentArea } from "@/lib/types"
 import type { ShadeMapHandle } from "@/lib/shademap"
 import { createShadeMap } from "@/lib/shademap"
 import { cn } from "@/lib/cn"
+import { SunGlyph } from "@/components/SunGlyph"
 
 export type MapPanelHandle = {
   flyTo: (area: IntentArea) => Promise<void>
@@ -104,24 +105,21 @@ const standardLights: LightsSpecification[] = [
 
 const makeMarkerEl = (
   cafe: Cafe,
-  matched: boolean,
-  preference: "sun" | "shade" | "either",
-  onClick: (e: MouseEvent) => void
+  _matched: boolean,
+  _preference: "sun" | "shade" | "either",
+  onClick: (e: MouseEvent) => void,
 ): HTMLElement => {
   const wrapper = document.createElement("button")
   wrapper.type = "button"
   wrapper.setAttribute("aria-label", `${cafe.name}, ${cafe.neighborhood}`)
   wrapper.className = cn(
     "group relative -translate-x-1/2 -translate-y-1/2 cursor-pointer",
-    "outline-none focus-visible:ring-2 focus-visible:ring-terracotta"
+    "outline-none focus-visible:ring-2 focus-visible:ring-terracotta",
   )
-  const ring = matched
-    ? preference === "sun"
-      ? "bg-gold-sun border-terracotta-deep shadow-[0_0_18px_2px_rgba(232,181,71,0.55)]"
-      : "bg-ink border-terracotta shadow-[0_0_14px_2px_rgba(74,85,102,0.45)]"
-    : "bg-bone-soft border-ink-soft/30 opacity-55"
   wrapper.innerHTML = `
-    <span class="block h-2.5 w-2.5 rounded-full border ${ring} transition-all duration-300 group-hover:scale-125"></span>
+    <span class="relative flex h-2.5 w-2.5 items-center justify-center transition-transform duration-300 group-hover:scale-125">
+      <span class="fts-marker-dot-pulse block size-[7px] min-h-[7px] min-w-[7px] rounded-full border border-terracotta-deep bg-terracotta"></span>
+    </span>
     <span class="pointer-events-none absolute left-1/2 top-full mt-2 -translate-x-1/2 whitespace-nowrap rounded-sm bg-ink/95 px-2 py-1 text-[10px] font-medium uppercase tracking-[0.14em] text-bone opacity-0 transition-opacity duration-200 group-hover:opacity-100">${cafe.name}</span>
   `
   wrapper.addEventListener("click", (ev) => {
@@ -903,30 +901,5 @@ const StatusOverlay = ({ status }: { status: MapStatus }) => {
     </div>
   )
 }
-
-const SunGlyph = () => (
-  <svg viewBox="0 0 48 48" className="h-full w-full" aria-hidden="true">
-    <circle cx="24" cy="24" r="7" fill="#e8b547" />
-    {[...Array(8)].map((_, i) => {
-      const a = (i * Math.PI) / 4
-      const x1 = 24 + Math.cos(a) * 12
-      const y1 = 24 + Math.sin(a) * 12
-      const x2 = 24 + Math.cos(a) * 20
-      const y2 = 24 + Math.sin(a) * 20
-      return (
-        <line
-          key={i}
-          x1={x1}
-          y1={y1}
-          x2={x2}
-          y2={y2}
-          stroke="#c76b45"
-          strokeWidth={2.2}
-          strokeLinecap="round"
-        />
-      )
-    })}
-  </svg>
-)
 
 export default MapPanel

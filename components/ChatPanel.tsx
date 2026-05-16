@@ -8,6 +8,7 @@ import { cn } from "@/lib/cn"
 import { formatZagrebDayTimeLabel } from "@/lib/format"
 import { suggestions, type SuggestionId } from "@/lib/intent"
 import ChatMessage, { type ChatMessageData } from "./ChatMessage"
+import { SunGlyph } from "@/components/SunGlyph"
 
 type SpeechRecognitionResult = {
   isFinal: boolean
@@ -104,7 +105,7 @@ const ChatPanel = ({
     const el = scrollerRef.current
     if (!el) return
     el.scrollTo({ top: el.scrollHeight, behavior: "smooth" })
-  }, [messages])
+  }, [messages, busy])
 
   useEffect(() => {
     const timer = window.setInterval(() => {
@@ -267,6 +268,7 @@ const ChatPanel = ({
 
   return (
     <section
+      aria-busy={busy}
       aria-label="Conversation"
       className={cn(
         "grain relative flex h-full min-h-0 flex-col bg-bone transition-[border-radius,box-shadow,border-color,transform] duration-700 ease-[cubic-bezier(0.2,0.8,0.2,1)]",
@@ -301,6 +303,29 @@ const ChatPanel = ({
               onShadeSampleTime={onShadeSampleTime}
             />
           ))}
+          {busy ? (
+            <div
+              role="status"
+              aria-live="polite"
+              aria-atomic="true"
+              className="fts-fade-up flex items-start gap-3 rounded-xl border border-terracotta/20 bg-gradient-to-br from-bone-soft/90 to-bone/80 px-4 py-3.5 shadow-[0_8px_28px_-18px_rgba(14,42,61,0.35)]"
+            >
+              <div
+                className="fts-sun-spin mt-0.5 h-10 w-10 shrink-0 drop-shadow-[0_2px_10px_rgba(232,181,71,0.35)]"
+                aria-hidden={true}
+              >
+                <SunGlyph />
+              </div>
+              <div className="min-w-0 pt-0.5">
+                <p className="font-display text-[15px] leading-snug text-ink">
+                  Tracing rooftops for your window…
+                </p>
+                <p className="mt-1 font-mono text-[10px] uppercase tracking-[0.14em] text-terracotta-deep">
+                  Checking cafes · buildings · sun path
+                </p>
+              </div>
+            </div>
+          ) : null}
         </div>
       </div>
 
@@ -330,8 +355,17 @@ const ChatPanel = ({
 
       <form
         onSubmit={handleSubmit}
-        className="relative z-[2] border-t border-ink/10 bg-bone px-7 py-4 sm:px-10"
+        className={cn(
+          "relative z-[2] border-t bg-bone px-7 py-4 sm:px-10",
+          focused ? "border-ink/10" : "border-ink/[0.06]",
+          busy && "pt-[calc(1rem+2px)]",
+        )}
       >
+        {busy ? (
+          <div className="fts-loading-bar-track z-[3]" aria-hidden>
+            <div className="fts-loading-bar-glow" />
+          </div>
+        ) : null}
         <div className="flex items-center gap-3">
           <textarea
             value={draft}
