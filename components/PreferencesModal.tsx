@@ -404,46 +404,6 @@ export default function PreferencesModal({ open, onOpenChange }: Props) {
                 </label>
               </section>
 
-              <section className="space-y-3 border-t border-ink/10 pt-6">
-                <h2 className="font-mono text-[10px] uppercase tracking-[0.2em] text-terracotta-deep">
-                  Extras
-                </h2>
-                <label
-                  className={cn(
-                    "flex cursor-pointer items-start gap-3 rounded-xl border border-ink/10 bg-bone/50 px-3.5 py-2.5 transition-colors duration-200 hover:border-terracotta/25 hover:bg-bone/80",
-                  )}
-                >
-                  <input
-                    type="checkbox"
-                    className="mt-0.5 size-4 shrink-0 rounded border-ink/30 text-terracotta focus:ring-terracotta/40"
-                    checked={prefs.avoid_busy}
-                    onChange={(e) =>
-                      setPrefs({ ...prefs, avoid_busy: e.target.checked })
-                    }
-                  />
-                  <span className="text-[12.5px] leading-snug text-ink">
-                    Prefer less busy spots (Foursquare)
-                  </span>
-                </label>
-                <label
-                  className={cn(
-                    "flex cursor-pointer items-start gap-3 rounded-xl border border-ink/10 bg-bone/50 px-3.5 py-2.5 transition-colors duration-200 hover:border-terracotta/25 hover:bg-bone/80",
-                  )}
-                >
-                  <input
-                    type="checkbox"
-                    className="mt-0.5 size-4 shrink-0 rounded border-ink/30 text-terracotta focus:ring-terracotta/40"
-                    checked={prefs.digest_enabled}
-                    onChange={(e) =>
-                      setPrefs({ ...prefs, digest_enabled: e.target.checked })
-                    }
-                  />
-                  <span className="text-[12.5px] leading-snug text-ink">
-                    Daily digest (coming soon)
-                  </span>
-                </label>
-              </section>
-
               <div className="flex flex-wrap items-center gap-2 border-t border-ink/10 pt-4">
                 <button
                   type="submit"
