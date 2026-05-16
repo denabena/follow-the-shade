@@ -17,6 +17,8 @@ const toCafe = (result: MapPayloadResult): Cafe => ({
   blurb: result.exposure.summary,
   lng: result.terrace_point.lng,
   lat: result.terrace_point.lat,
+  google_maps_uri: result.google_maps_uri,
+  place_photo_p: result.place_photo_p,
 });
 
 const toTimeline = (result: MapPayloadResult): TimelinePoint[] =>

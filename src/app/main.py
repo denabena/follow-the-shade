@@ -4,6 +4,8 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.chat.routes import router as chat_router
+from app.api.notifications.routes import router as notifications_router
+from app.api.places.routes import router as places_router
 from app.api.users.routes import router as users_router
 from app.lifespan import lifespan
 
@@ -25,7 +27,9 @@ app.add_middleware(
 )
 
 app.include_router(chat_router)
+app.include_router(places_router)
 app.include_router(users_router)
+app.include_router(notifications_router)
 
 
 @app.get("/health", tags=["health"])

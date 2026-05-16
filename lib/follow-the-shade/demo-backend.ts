@@ -303,6 +303,7 @@ function buildResult(
     location: cafe.location,
     terrace_point: cafe.terrace_point,
     address: cafe.address,
+    google_maps_uri: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${cafe.name} ${cafe.address}`)}`,
     rating: cafe.rating,
     user_rating_count: cafe.user_rating_count,
     is_open_for_window: true,

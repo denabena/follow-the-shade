@@ -63,7 +63,8 @@ class GooglePlacesClient:
             "X-Goog-FieldMask": (
                 "places.id,places.displayName,places.formattedAddress,"
                 "places.location,places.rating,places.userRatingCount,"
-                "places.regularOpeningHours,places.googleMapsUri,places.outdoorSeating"
+                "places.regularOpeningHours,places.googleMapsUri,places.outdoorSeating,"
+                "places.photos"
             ),
         }
         try:
@@ -160,6 +161,13 @@ def _normalize_new_place(place: dict[str, Any]) -> dict[str, Any] | None:
     display = place.get("displayName", {})
     name = display.get("text") if isinstance(display, dict) else str(display)
     regular_hours = place.get("regularOpeningHours") or {}
+    photos = place.get("photos") or []
+    place_photo_name: str | None = None
+    if photos and isinstance(photos, list) and isinstance(photos[0], dict):
+        pn = photos[0].get("name")
+        if isinstance(pn, str) and pn.strip():
+            place_photo_name = pn.strip()
+
     return {
         "id": f"google:{place.get('id', '')}",
         "name": name or "Cafe",
@@ -170,6 +178,7 @@ def _normalize_new_place(place: dict[str, Any]) -> dict[str, Any] | None:
         "rating": place.get("rating"),
         "user_rating_count": place.get("userRatingCount"),
         "google_maps_uri": place.get("googleMapsUri"),
+        "place_photo_name": place_photo_name,
         "is_open_for_window": regular_hours.get("openNow", True),
         "outdoor_seating": place.get("outdoorSeating"),
         "outdoor_seating_confidence": (
@@ -191,6 +200,13 @@ def _normalize_legacy_place(place: dict[str, Any]) -> dict[str, Any] | None:
         if place_id
         else None
     )
+    photos = place.get("photos") or []
+    photo_reference: str | None = None
+    if photos and isinstance(photos, list) and isinstance(photos[0], dict):
+        pr = photos[0].get("photo_reference")
+        if isinstance(pr, str) and pr.strip():
+            photo_reference = pr.strip()
+
     opening_hours = place.get("opening_hours") or {}
     return {
         "id": f"google:{place_id or ''}",
@@ -202,6 +218,7 @@ def _normalize_legacy_place(place: dict[str, Any]) -> dict[str, Any] | None:
         "rating": place.get("rating"),
         "user_rating_count": place.get("user_ratings_total"),
         "google_maps_uri": google_maps_uri,
+        "photo_reference": photo_reference,
         "is_open_for_window": opening_hours.get("open_now", True),
         "outdoor_seating": None,
         "outdoor_seating_confidence": "unknown",

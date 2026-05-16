@@ -40,6 +40,25 @@ declare global {
   }
 }
 
+type WeatherReport = {
+  temperatureC: number
+  feelsLikeC: number
+  windKmh: number
+  condition: string
+}
+
+const weatherLabelFromCode = (code: number): string => {
+  if (code === 0) return "Clear sky"
+  if ([1, 2].includes(code)) return "Partly cloudy"
+  if (code === 3) return "Overcast"
+  if ([45, 48].includes(code)) return "Foggy"
+  if ([51, 53, 55, 56, 57].includes(code)) return "Drizzle"
+  if ([61, 63, 65, 66, 67, 80, 81, 82].includes(code)) return "Rain"
+  if ([71, 73, 75, 77, 85, 86].includes(code)) return "Snow"
+  if ([95, 96, 99].includes(code)) return "Thunderstorm"
+  return "Variable conditions"
+}
+
 type Props = {
   messages: ChatMessageData[]
   busy: boolean
@@ -50,6 +69,7 @@ type Props = {
   onSuggestion: (id: SuggestionId) => void
   onStreamComplete: (messageId: string) => void
   onCafeSelect: (cafe: Cafe) => void
+  onOpenPreferences: () => void
 }
 
 const ChatPanel = ({
@@ -61,13 +81,18 @@ const ChatPanel = ({
   onSend,
   onSuggestion,
   onStreamComplete,
-  onCafeSelect
+  onCafeSelect,
+  onOpenPreferences
 }: Props) => {
   const { userId } = useAuth()
   const [draft, setDraft] = useState("")
   const [speechError, setSpeechError] = useState<string | null>(null)
   const [listening, setListening] = useState(false)
   const [now, setNow] = useState(() => new Date())
+  const [weather, setWeather] = useState<WeatherReport | null>(null)
+  const [weatherStatus, setWeatherStatus] = useState<"loading" | "ready" | "error">(
+    "loading"
+  )
   const scrollerRef = useRef<HTMLDivElement>(null)
   const recognitionRef = useRef<SpeechRecognitionLike | null>(null)
 
@@ -82,6 +107,65 @@ const ChatPanel = ({
       setNow(new Date())
     }, 30000)
     return () => window.clearInterval(timer)
+  }, [])
+
+  useEffect(() => {
+    let cancelled = false
+
+    const loadWeather = async () => {
+      try {
+        setWeatherStatus("loading")
+        const res = await fetch(
+          "https://api.open-meteo.com/v1/forecast?latitude=43.5081&longitude=16.4402&current=temperature_2m,apparent_temperature,weather_code,wind_speed_10m&timezone=auto",
+          { cache: "no-store" }
+        )
+        if (!res.ok) throw new Error("weather_unavailable")
+
+        const data = (await res.json()) as {
+          current?: {
+            temperature_2m?: number
+            apparent_temperature?: number
+            weather_code?: number
+            wind_speed_10m?: number
+          }
+        }
+
+        const current = data.current
+        if (
+          !current ||
+          current.temperature_2m === undefined ||
+          current.apparent_temperature === undefined ||
+          current.weather_code === undefined ||
+          current.wind_speed_10m === undefined
+        ) {
+          throw new Error("weather_payload_invalid")
+        }
+
+        if (!cancelled) {
+          setWeather({
+            temperatureC: current.temperature_2m,
+            feelsLikeC: current.apparent_temperature,
+            windKmh: current.wind_speed_10m,
+            condition: weatherLabelFromCode(current.weather_code)
+          })
+          setWeatherStatus("ready")
+        }
+      } catch {
+        if (!cancelled) {
+          setWeatherStatus("error")
+        }
+      }
+    }
+
+    void loadWeather()
+    const refreshTimer = window.setInterval(() => {
+      void loadWeather()
+    }, 10 * 60 * 1000)
+
+    return () => {
+      cancelled = true
+      window.clearInterval(refreshTimer)
+    }
   }, [])
 
   const dayTimeLabel = new Intl.DateTimeFormat(undefined, {
@@ -192,23 +276,31 @@ const ChatPanel = ({
         className
       )}
     >
-      <Header dayTimeLabel={dayTimeLabel} signedIn={Boolean(userId)} />
+      <Header
+        dayTimeLabel={dayTimeLabel}
+        signedIn={Boolean(userId)}
+        weather={weather}
+        weatherStatus={weatherStatus}
+        onOpenPreferences={onOpenPreferences}
+      />
 
       <div
         ref={scrollerRef}
         role="log"
         aria-live="polite"
         aria-relevant="additions"
-        className="relative z-[2] flex-1 space-y-6 overflow-y-auto px-7 pb-6 pt-2 sm:px-10"
+        className="relative z-[2] flex flex-1 flex-col overflow-y-auto px-7 pb-6 pt-2 sm:px-10"
       >
-        {messages.map((m) => (
-          <ChatMessage
-            key={m.id}
-            message={m}
-            onStreamComplete={() => onStreamComplete(m.id)}
-            onCafeSelect={onCafeSelect}
-          />
-        ))}
+        <div className="space-y-6">
+          {messages.map((m) => (
+            <ChatMessage
+              key={m.id}
+              message={m}
+              onStreamComplete={() => onStreamComplete(m.id)}
+              onCafeSelect={onCafeSelect}
+            />
+          ))}
+        </div>
       </div>
 
       {showSuggestions && (
@@ -300,28 +392,67 @@ const ChatPanel = ({
 
 const Header = ({
   dayTimeLabel,
-  signedIn
+  signedIn,
+  weather,
+  weatherStatus,
+  onOpenPreferences
 }: {
   dayTimeLabel: string
   signedIn: boolean
+  weather: WeatherReport | null
+  weatherStatus: "loading" | "ready" | "error"
+  onOpenPreferences: () => void
 }) => (
-  <header className="relative z-[2] flex items-start justify-between gap-4 px-7 pb-3 pt-7 sm:px-10">
-    <div>
-      <p className="font-mono text-[10px] uppercase tracking-[0.32em] text-terracotta-deep">
-        Split · {dayTimeLabel}
-      </p>
-      <h1 className="font-display text-[34px] leading-[1.05] tracking-tight text-ink">
+  <header className="relative z-[2] px-4 pb-2 pt-5 sm:px-7 sm:pb-3 sm:pt-7 lg:px-10">
+    <p className="font-mono text-[9px] uppercase tracking-[0.28em] text-terracotta-deep sm:text-[10px] sm:tracking-[0.32em]">
+      Split · {dayTimeLabel}
+    </p>
+    <div className="mt-1 flex items-center justify-between gap-3 sm:mt-1.5 sm:gap-4">
+      <h1 className="font-display -translate-x-[2px] min-w-0 flex-1 text-[1.625rem] leading-[1.06] tracking-tight text-ink sm:text-[32px] sm:leading-[1.05] lg:text-[34px]">
         Follow the Shade
       </h1>
+      <div className="shrink-0">
+        {signedIn ? (
+          <button
+            type="button"
+            onClick={onOpenPreferences}
+            className="rounded-full border border-ink/25 px-2.5 py-2 text-[10px] font-medium uppercase tracking-[0.12em] text-ink/72 transition-colors min-[360px]:px-3 min-[360px]:py-1.5 min-[360px]:text-[10.5px] sm:hover:border-ink/40 sm:hover:text-ink"
+          >
+            <span className="sm:hidden">Prefs</span>
+            <span className="hidden sm:inline">Preferences</span>
+          </button>
+        ) : (
+          <Link
+            href="/sign-in"
+            className="rounded-full border border-ink/25 px-2.5 py-2 text-[10px] font-medium uppercase tracking-[0.12em] text-ink/72 transition-colors min-[360px]:px-3 min-[360px]:py-1.5 min-[360px]:text-[10.5px] sm:hover:border-ink/40 sm:hover:text-ink"
+          >
+            Sign up
+          </Link>
+        )}
+      </div>
     </div>
-    <div className="flex shrink-0 items-center gap-3 pt-1">
-      <Link
-        href={signedIn ? "/settings" : "/sign-in"}
-        className="rounded-full border border-ink/25 px-3 py-1.5 text-[10.5px] font-medium uppercase tracking-[0.12em] text-ink/72 transition-colors hover:border-ink/40 hover:text-ink"
+    {weatherStatus === "ready" && weather ? (
+      <p
+        className="mt-2 flex max-w-full flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] leading-snug text-ink/62"
+        aria-live="polite"
       >
-        {signedIn ? "Preferences" : "Sign up"}
-      </Link>
-    </div>
+        <span className="font-medium text-ink">{Math.round(weather.temperatureC)}°C</span>
+        <span className="text-ink/32" aria-hidden>
+          ·
+        </span>
+        <span>{weather.condition}</span>
+        <span className="text-ink/32" aria-hidden>
+          ·
+        </span>
+        <span>Feels {Math.round(weather.feelsLikeC)}°C</span>
+        <span className="text-ink/32" aria-hidden>
+          ·
+        </span>
+        <span>Wind {Math.round(weather.windKmh)} km/h</span>
+      </p>
+    ) : weatherStatus === "loading" ? (
+      <p className="mt-2 text-[11px] text-ink/45">Loading weather in Split…</p>
+    ) : null}
   </header>
 )
 

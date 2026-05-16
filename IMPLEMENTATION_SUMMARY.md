@@ -421,7 +421,7 @@ Manual backend checks:
 - The frontend map is now Mapbox-based, but the best experience still depends on valid Mapbox and optional ShadeMap runtime keys.
 - `components/AnalysisOverlay.tsx` exists, but backend progress is not yet streamed into the UI.
 - The frontend does not yet recover the previous analysis on reload via `analysis_id`.
-- The Python backend does not yet use LangGraph/OpenAI orchestration. It calls the composite tool directly for reliability.
+- The Python chat backend now uses the LangGraph/OpenAI Follow the Shade agent. The composite tool remains the source of truth for analysis and is also reused by notification digests.
 - The current answer text includes source-aware uncertainty phrasing so we do not over-promise real analysis.
 - The cache is in-memory per Python process; use Redis later if multiple backend instances are deployed.
 

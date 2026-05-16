@@ -4,6 +4,7 @@ from pathlib import Path
 from typing import Any
 
 import yaml
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from fastapi import FastAPI
 from langgraph.checkpoint.memory import InMemorySaver
 from langgraph.store.memory import InMemoryStore
@@ -13,12 +14,14 @@ from app.builders.agent_factory import AgentFactory
 from app.builders.graph_factory import GraphFactory
 from app.builders.model_factory import ModelFactory
 from app.builders.tool_registry import ToolRegistry
-from app.state import AppState
+from app.notification_schedule_store import NotificationScheduleStore
 from app.user_preferences_store import UserPreferencesStore
+from app.state import AppState
 from core.config import settings
 from core.logging_config import configure_logging
-from services.follow_the_shade.agent import FollowTheShadeAgent
 from services.follow_the_shade.cache import TtlCache
+from services.notifications.dispatcher import NotificationDispatcher
+from services.notifications.email_sender import ResendEmailSender
 from tools.find_split_cafe_sun_shade_tool import FindSplitCafeSunShadeTool
 
 log = logging.getLogger(__name__)
@@ -32,15 +35,16 @@ async def lifespan(app: FastAPI):
 
     analysis_store = InMemoryAnalysisStore(ttl_seconds=settings.SESSION_TTL_SECONDS)
     preferences_store = UserPreferencesStore(settings.USER_PREFERENCES_PATH)
+    notification_store = NotificationScheduleStore(
+        settings.NOTIFICATIONS_SCHEDULES_PATH
+    )
     upstream_cache = TtlCache(ttl_seconds=settings.FOLLOW_THE_SHADE_CACHE_TTL_SECONDS)
-    fallback_tool = FindSplitCafeSunShadeTool(
+    analysis_tool = FindSplitCafeSunShadeTool(
         analysis_store=analysis_store,
         settings=settings,
         seed_path=settings.SPLIT_CAFE_SEED_PATH,
         upstream_cache=upstream_cache,
     )
-    fallback_agent = FollowTheShadeAgent(tool=fallback_tool)
-
     config_data = _load_agent_config()
     models = config_data.get("models", [])
     agents = config_data.get("agents", [])
@@ -78,16 +82,41 @@ async def lifespan(app: FastAPI):
         )
         await tool_registry.initialize_async_tools()
     else:
-        log.warning(
-            "OPENAI_API_KEY is not configured; using deterministic fallback agent."
+        log.error("OPENAI_API_KEY is not configured; chat agent will be unavailable.")
+
+    notification_dispatcher = NotificationDispatcher(
+        schedule_store=notification_store,
+        analysis_runner=analysis_tool,
+        email_sender=ResendEmailSender(
+            api_key=settings.RESEND_API_KEY,
+            from_email=settings.RESEND_FROM_EMAIL,
+            dry_run=settings.NOTIFICATIONS_DRY_RUN,
+        ),
+        app_public_url=settings.APP_PUBLIC_URL,
+        check_interval_seconds=settings.NOTIFICATIONS_CHECK_INTERVAL_SECONDS,
+    )
+    scheduler = None
+
+    if settings.NOTIFICATIONS_ENABLED:
+        scheduler = AsyncIOScheduler(timezone="UTC")
+        scheduler.add_job(
+            notification_dispatcher.dispatch_once,
+            "interval",
+            seconds=settings.NOTIFICATIONS_CHECK_INTERVAL_SECONDS,
+            id="notification-dispatch",
+            max_instances=1,
+            coalesce=True,
         )
+        scheduler.start()
+        log.info("--- Notification scheduler started. ---")
 
     app.state.container = AppState(
         settings=settings,
         analysis_store=analysis_store,
         upstream_cache=upstream_cache,
         preferences_store=preferences_store,
-        agent=fallback_agent,
+        notification_store=notification_store,
+        notification_dispatcher=notification_dispatcher,
         agent_app=agent_app,
         tool_registry=tool_registry,
         config={"models": models, "agents": agents, "swarm_config": swarm},
@@ -98,6 +127,8 @@ async def lifespan(app: FastAPI):
     try:
         yield
     finally:
+        if scheduler is not None:
+            scheduler.shutdown(wait=False)
         if tool_registry is not None:
             await tool_registry.shutdown_async_tools()
         log.info("--- Server is shutting down. ---")

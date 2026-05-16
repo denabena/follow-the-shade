@@ -8,7 +8,10 @@ from typing import Any
 
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage, ToolMessage
 
-from services.follow_the_shade.thread_context import current_thread_id
+from services.follow_the_shade.thread_context import (
+    current_thread_id,
+    current_user_query,
+)
 
 log = logging.getLogger(__name__)
 
@@ -184,7 +187,8 @@ async def run_chat_flow(
             else:
                 config["configurable"][key] = value
 
-    token = current_thread_id.set(thread_id)
+    thread_token = current_thread_id.set(thread_id)
+    query_token = current_user_query.set(input_text)
     try:
         for attempt in range(max_retries + 1):
             try:
@@ -220,14 +224,17 @@ async def run_chat_flow(
             ai_text = (extract_ai_text(response) or "").strip()
             tool_payload = extract_tool_payload(response)
             return ChatFlowResult(
-                answer=ai_text or "I checked that request for Split.",
+                answer=tool_payload.get("answer")
+                or ai_text
+                or "I checked that request for Split.",
                 detected_language="en",
                 analysis_id=tool_payload.get("analysis_id"),
                 map_payload=tool_payload.get("map_payload"),
                 sources=tool_payload.get("sources", []),
             )
     finally:
-        current_thread_id.reset(token)
+        current_user_query.reset(query_token)
+        current_thread_id.reset(thread_token)
 
     return ChatFlowResult(
         answer="I could not process that request.", detected_language="en"
@@ -263,6 +270,7 @@ def extract_tool_payload(response: dict[str, Any] | None) -> dict[str, Any]:
             "map_payload" in parsed or "analysis_id" in parsed or parsed.get("answer")
         ):
             return {
+                "answer": parsed.get("answer"),
                 "analysis_id": parsed.get("analysis_id"),
                 "map_payload": parsed.get("map_payload"),
                 "sources": parsed.get("sources", []),

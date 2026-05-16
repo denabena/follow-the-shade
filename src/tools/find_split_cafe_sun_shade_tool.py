@@ -8,7 +8,10 @@ from app.analysis_store import InMemoryAnalysisStore
 from core.config import Settings
 from services.follow_the_shade.cache import TtlCache
 from services.follow_the_shade.pipeline import FollowTheShadePipeline
-from services.follow_the_shade.thread_context import current_thread_id
+from services.follow_the_shade.thread_context import (
+    current_thread_id,
+    current_user_query,
+)
 from tools.utils import get_tool_config, override_field_descriptions_from_schema
 
 
@@ -59,7 +62,10 @@ class FindSplitCafeSunShadeTool(BaseTool):
 
     async def _arun(self, query: str) -> str:
         thread_id = current_thread_id.get()
-        result = await self.run_pipeline(query=query, thread_id=thread_id)
+        result = await self.run_pipeline(
+            query=current_user_query.get() or query,
+            thread_id=thread_id,
+        )
         return json.dumps(result, ensure_ascii=False)
 
     async def run_pipeline(self, *, query: str, thread_id: str) -> dict[str, Any]:

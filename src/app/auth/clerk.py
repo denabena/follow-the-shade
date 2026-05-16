@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import asyncio
 from functools import lru_cache
 from typing import Any
 
@@ -17,7 +18,7 @@ def _jwks_client() -> PyJWKClient | None:
     jwks_url = settings.clerk_jwks_url
     if not jwks_url:
         return None
-    return PyJWKClient(jwks_url)
+    return PyJWKClient(jwks_url, timeout=settings.CLERK_JWKS_TIMEOUT_SECONDS)
 
 
 def verify_clerk_token(token: str) -> dict[str, Any] | None:
@@ -62,3 +63,7 @@ def user_id_from_token(token: str) -> str | None:
         return None
     sub = payload.get("sub")
     return str(sub) if sub else None
+
+
+async def user_id_from_token_async(token: str) -> str | None:
+    return await asyncio.to_thread(user_id_from_token, token)

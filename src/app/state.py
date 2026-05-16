@@ -10,7 +10,8 @@ class AppState:
     analysis_store: Any
     upstream_cache: Any
     preferences_store: Any
-    agent: Any | None = None
+    notification_store: Any
+    notification_dispatcher: Any | None
     agent_app: Any | None = None
     tool_registry: Any | None = None
     config: dict[str, Any] | None = None

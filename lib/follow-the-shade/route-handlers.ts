@@ -11,6 +11,7 @@ const SPEECH_CONTEXT_TERMS = [
   "sunny terrace",
   "outdoor seating",
 ];
+const BACKEND_PROXY_TIMEOUT_MS = 8_000;
 
 export async function handleFinalAnswer(
   request: Request,
@@ -95,6 +96,52 @@ export async function proxyMePreferences(
   return proxyToBackend("/me/preferences", undefined, bearerToken, "GET");
 }
 
+export async function proxyMeNotifications(
+  request: Request,
+  bearerToken?: string | null,
+  options?: { bodyOverride?: unknown; test?: boolean },
+): Promise<Response> {
+  if (!shouldProxyToBackend()) {
+    return backendNotConfigured();
+  }
+
+  const path = options?.test ? "/me/notifications/test" : "/me/notifications";
+  if (request.method === "GET") {
+    return proxyToBackend(path, undefined, bearerToken, "GET");
+  }
+
+  if (request.method === "PUT" || request.method === "POST") {
+    let body: unknown = options?.bodyOverride;
+    if (body === undefined) {
+      try {
+        body = await request.json();
+      } catch {
+        body = {};
+      }
+    }
+    return proxyToBackend(path, body, bearerToken, request.method);
+  }
+
+  return Response.json({ error: "method_not_allowed" }, { status: 405 });
+}
+
+export async function handlePlacePhoto(
+  request: Request,
+  bearerToken?: string | null,
+): Promise<Response> {
+  if (!shouldProxyToBackend()) {
+    return backendNotConfigured();
+  }
+  const p = new URL(request.url).searchParams.get("p");
+  if (!p?.trim()) {
+    return Response.json({ error: "missing_p" }, { status: 400 });
+  }
+  return proxyToBackendBinaryGet(
+    `/places/photo?p=${encodeURIComponent(p)}`,
+    bearerToken,
+  );
+}
+
 function shouldProxyToBackend(): boolean {
   return Boolean(process.env.FOLLOW_THE_SHADE_API_BASE_URL);
 }
@@ -133,15 +180,35 @@ async function proxyToBackend(
   const httpMethod =
     method ?? (body === undefined ? "GET" : "POST");
 
-  const upstream = await fetch(`${baseUrl.replace(/\/$/, "")}${path}`, {
-    method: httpMethod,
-    headers,
-    body:
-      body === undefined || httpMethod === "GET"
-        ? undefined
-        : JSON.stringify(body),
-    cache: "no-store",
-  });
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), BACKEND_PROXY_TIMEOUT_MS);
+  let upstream: Response;
+  try {
+    upstream = await fetch(`${baseUrl.replace(/\/$/, "")}${path}`, {
+      method: httpMethod,
+      headers,
+      body:
+        body === undefined || httpMethod === "GET"
+          ? undefined
+          : JSON.stringify(body),
+      cache: "no-store",
+      signal: controller.signal,
+    });
+  } catch (error) {
+    const timedOut =
+      error instanceof DOMException && error.name === "AbortError";
+    return Response.json(
+      {
+        error: timedOut ? "backend_timeout" : "backend_unreachable",
+        message: timedOut
+          ? "The backend took too long to respond."
+          : "Could not reach the backend.",
+      },
+      { status: timedOut ? 504 : 502 },
+    );
+  } finally {
+    clearTimeout(timeout);
+  }
   const text = await upstream.text();
 
   return new Response(text, {
@@ -149,5 +216,44 @@ async function proxyToBackend(
     headers: {
       "Content-Type": upstream.headers.get("Content-Type") ?? "application/json",
     },
+  });
+}
+
+async function proxyToBackendBinaryGet(
+  pathWithQuery: string,
+  bearerToken?: string | null,
+): Promise<Response> {
+  const baseUrl = process.env.FOLLOW_THE_SHADE_API_BASE_URL;
+  if (!baseUrl) {
+    return Response.json({ error: "backend_url_missing" }, { status: 500 });
+  }
+
+  const headers: HeadersInit = {};
+  if (bearerToken) {
+    headers.Authorization = `Bearer ${bearerToken}`;
+  } else if (process.env.FOLLOW_THE_SHADE_API_TOKEN) {
+    headers.Authorization = `Bearer ${process.env.FOLLOW_THE_SHADE_API_TOKEN}`;
+  }
+
+  const upstream = await fetch(`${baseUrl.replace(/\/$/, "")}${pathWithQuery}`, {
+    method: "GET",
+    headers,
+    cache: "no-store",
+  });
+
+  const body = await upstream.arrayBuffer();
+  const outHeaders = new Headers();
+  const ct = upstream.headers.get("Content-Type");
+  if (ct) {
+    outHeaders.set("Content-Type", ct);
+  }
+  const cc = upstream.headers.get("Cache-Control");
+  if (cc) {
+    outHeaders.set("Cache-Control", cc);
+  }
+
+  return new Response(body, {
+    status: upstream.status,
+    headers: outHeaders
   });
 }
