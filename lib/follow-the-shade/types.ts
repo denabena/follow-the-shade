@@ -1,7 +1,12 @@
 export type ExposurePreference = "sun" | "shade" | "either";
 export type ExposureState = "sun" | "shade";
-export type DetectedLanguage = "en";
+export type DetectedLanguage = string;
 export type OutdoorSeatingConfidence = "high" | "medium" | "low" | "unknown";
+
+export type ChatAudio = {
+  mime_type: string;
+  data: string;
+};
 
 export type LatLng = {
   lat: number;
@@ -77,7 +82,7 @@ export type ChatResponse = {
   analysis_id: string | null;
   map_payload: MapPayload | null;
   sources: string[];
-  audio: string | null;
+  audio: ChatAudio | null;
   detected_language: DetectedLanguage | null;
 };
 
