@@ -61,6 +61,45 @@ def test_final_answer_returns_map_payload() -> None:
     assert payload["map_payload"]["results"][0]["exposure"]["samples"]
 
 
+def test_between_and_time_window_returns_map_payload() -> None:
+    with (
+        patch(
+            "services.geodata.overpass_client.OverpassClient.fetch_buildings",
+            new_callable=AsyncMock,
+            return_value=_sample_building(),
+        ),
+        patch(
+            "services.geodata.overpass_client.OverpassClient.fetch_outdoor_seating_near",
+            new_callable=AsyncMock,
+            return_value=[],
+        ),
+        patch(
+            "services.weather.open_meteo.OpenMeteoClient.window_weather",
+            new_callable=AsyncMock,
+            return_value={"cloud_cover_avg": 20.0, "precipitation_probability_max": 5.0},
+        ),
+        TestClient(app) as client,
+    ):
+        response = client.post(
+            "/chat/final_answer",
+            json={
+                "message": "I want a cafe in the sun on the Riva between 3 and 5pm today.",
+                "thread_id": "test-thread",
+            },
+        )
+
+    payload = response.json()
+    assert response.status_code == 200
+    assert payload["analysis_id"]
+    assert payload["map_payload"]["request"]["preference"] == "sun"
+    assert payload["map_payload"]["request"]["start"].endswith("15:00:00+01:00") or payload[
+        "map_payload"
+    ]["request"]["start"].endswith("15:00:00+02:00")
+    assert payload["map_payload"]["request"]["end"].endswith("17:00:00+01:00") or payload[
+        "map_payload"
+    ]["request"]["end"].endswith("17:00:00+02:00")
+
+
 def test_analysis_recovery_returns_saved_payload() -> None:
     with (
         patch(

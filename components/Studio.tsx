@@ -26,6 +26,7 @@ const Studio = () => {
     { id: newId(), role: "bot", text: greet(), streaming: true }
   ])
   const [phase, setPhase] = useState<Phase>({ kind: "idle" })
+  const [hasStarted, setHasStarted] = useState(false)
   const [threadId] = useState(() => createThreadId())
 
   const mapRef = useRef<MapPanelHandle>(null)
@@ -42,6 +43,9 @@ const Studio = () => {
 
   const beginQuery = useCallback(
     async (userUtterance: string) => {
+      setHasStarted(true)
+      requestAnimationFrame(() => mapRef.current?.resize())
+      window.setTimeout(() => mapRef.current?.resize(), 720)
       pushMessage({ id: newId(), role: "user", text: userUtterance })
       setPhase({ kind: "checking" })
       mapRef.current?.clearResults()
@@ -76,10 +80,7 @@ const Studio = () => {
           text: response.answer,
           streaming: true,
           intent,
-          results: { items: results, intent },
-          outro: response.sources.length
-            ? `Sources: ${response.sources.join(" · ")}`
-            : undefined
+          results: { items: results, intent }
         })
         setPhase({ kind: "done", intent })
       } catch (err) {
@@ -125,26 +126,66 @@ const Studio = () => {
     messages.filter((m) => m.role === "user").length === 0
 
   const busy = phase.kind === "checking"
+  const mapActive = hasStarted
 
   return (
-    <div className="flex h-screen w-full flex-col lg:grid lg:grid-cols-[minmax(420px,38%)_minmax(0,1fr)] lg:grid-rows-[minmax(0,1fr)]">
-      <div className="min-h-0 flex-1 overflow-hidden">
-        <ChatPanel
-          messages={messages}
-          busy={busy}
-          showSuggestions={showSuggestions}
-          onSend={handleSend}
-          onSuggestion={handleSuggestion}
-          onStreamComplete={handleStreamComplete}
-          onCafeSelect={handleCafeSelect}
+    <div className="relative h-screen w-full overflow-hidden bg-bone">
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0 overflow-hidden"
+      >
+        <div
+          className={[
+            "absolute left-1/2 top-1/2 h-[70vmin] w-[70vmin] -translate-x-1/2 -translate-y-1/2 rounded-full bg-gold-sun/25 blur-3xl transition-[opacity,transform] duration-1000 ease-out",
+            mapActive ? "scale-125 opacity-0" : "scale-100 opacity-100"
+          ].join(" ")}
         />
+        <div className="absolute -right-24 bottom-0 h-[55vmin] w-[55vmin] rounded-full bg-terracotta/10 blur-3xl" />
+        <div className="absolute -left-20 top-0 h-[45vmin] w-[45vmin] rounded-full bg-ink/10 blur-3xl" />
       </div>
-      <div className="relative h-[45vh] shrink-0 overflow-hidden bg-bone-deep lg:h-auto">
-        <MapPanel
-          ref={mapRef}
-          onReady={handleMapReady}
-          onCafeClick={handleCafeSelect}
-        />
+
+      <div
+        className={[
+          "relative z-[2] h-full w-full transition-[grid-template-columns,grid-template-rows,padding,gap] duration-700 ease-[cubic-bezier(0.2,0.8,0.2,1)]",
+          mapActive
+            ? "grid grid-cols-1 grid-rows-[minmax(0,52%)_minmax(0,48%)] gap-0 p-0 lg:grid-cols-[minmax(420px,38%)_minmax(0,1fr)] lg:grid-rows-[minmax(0,1fr)]"
+            : "p-6"
+        ].join(" ")}
+      >
+        <div
+          className={[
+            "min-h-0 min-w-0 overflow-hidden transition-[transform,opacity] duration-700 ease-[cubic-bezier(0.2,0.8,0.2,1)]",
+            mapActive
+              ? "h-full translate-y-0 opacity-100"
+              : "absolute left-1/2 top-1/2 h-[min(920px,calc(100dvh-96px))] w-[min(980px,calc(100vw-48px))] -translate-x-1/2 -translate-y-1/2 animate-[fts-chat-enter_720ms_cubic-bezier(0.2,0.8,0.2,1)_both]"
+          ].join(" ")}
+        >
+          <ChatPanel
+            messages={messages}
+            busy={busy}
+            showSuggestions={showSuggestions}
+            focused={!mapActive}
+            className={mapActive ? "" : "rounded-[2rem]"}
+            onSend={handleSend}
+            onSuggestion={handleSuggestion}
+            onStreamComplete={handleStreamComplete}
+            onCafeSelect={handleCafeSelect}
+          />
+        </div>
+        <div
+          className={[
+            "relative min-h-0 min-w-0 overflow-hidden bg-bone-deep transition-[opacity,transform] duration-700 ease-[cubic-bezier(0.2,0.8,0.2,1)]",
+            mapActive
+              ? "pointer-events-auto h-full translate-y-0 opacity-100"
+              : "pointer-events-none absolute inset-x-6 bottom-6 h-[38vh] translate-y-6 opacity-0 sm:inset-x-8"
+          ].join(" ")}
+        >
+          <MapPanel
+            ref={mapRef}
+            onReady={handleMapReady}
+            onCafeClick={handleCafeSelect}
+          />
+        </div>
       </div>
     </div>
   )

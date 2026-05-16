@@ -6,10 +6,44 @@ import { cn } from "@/lib/cn"
 import { suggestions, type SuggestionId } from "@/lib/intent"
 import ChatMessage, { type ChatMessageData } from "./ChatMessage"
 
+type SpeechRecognitionResult = {
+  isFinal: boolean
+  0: { transcript: string }
+}
+
+type SpeechRecognitionLike = {
+  continuous: boolean
+  interimResults: boolean
+  lang: string
+  start: () => void
+  stop: () => void
+  abort: () => void
+  onstart: (() => void) | null
+  onend: (() => void) | null
+  onerror: ((event: { error: string }) => void) | null
+  onresult:
+    | ((event: {
+        resultIndex: number
+        results: ArrayLike<SpeechRecognitionResult>
+      }) => void)
+    | null
+}
+
+type SpeechRecognitionCtor = new () => SpeechRecognitionLike
+
+declare global {
+  interface Window {
+    SpeechRecognition?: SpeechRecognitionCtor
+    webkitSpeechRecognition?: SpeechRecognitionCtor
+  }
+}
+
 type Props = {
   messages: ChatMessageData[]
   busy: boolean
   showSuggestions: boolean
+  className?: string
+  focused?: boolean
   onSend: (text: string) => void
   onSuggestion: (id: SuggestionId) => void
   onStreamComplete: (messageId: string) => void
@@ -20,13 +54,18 @@ const ChatPanel = ({
   messages,
   busy,
   showSuggestions,
+  className,
+  focused = false,
   onSend,
   onSuggestion,
   onStreamComplete,
   onCafeSelect
 }: Props) => {
   const [draft, setDraft] = useState("")
+  const [speechError, setSpeechError] = useState<string | null>(null)
+  const [listening, setListening] = useState(false)
   const scrollerRef = useRef<HTMLDivElement>(null)
+  const recognitionRef = useRef<SpeechRecognitionLike | null>(null)
 
   useEffect(() => {
     const el = scrollerRef.current
@@ -52,10 +91,89 @@ const ChatPanel = ({
     }
   }
 
+  const handleSpeechClick = () => {
+    if (busy) return
+
+    const existing = recognitionRef.current
+    if (existing && listening) {
+      existing.stop()
+      return
+    }
+
+    const SpeechRecognition =
+      window.SpeechRecognition ?? window.webkitSpeechRecognition
+
+    if (!SpeechRecognition) {
+      setSpeechError("Speech input is not supported in this browser.")
+      return
+    }
+
+    const recognition = new SpeechRecognition()
+    recognitionRef.current = recognition
+    recognition.continuous = false
+    recognition.interimResults = true
+    recognition.lang = "en-US"
+
+    recognition.onstart = () => {
+      setListening(true)
+      setSpeechError(null)
+    }
+
+    recognition.onend = () => {
+      setListening(false)
+      recognitionRef.current = null
+    }
+
+    recognition.onerror = (event) => {
+      setListening(false)
+      recognitionRef.current = null
+      setSpeechError(
+        event.error === "not-allowed"
+          ? "Microphone access was blocked."
+          : "Speech input stopped. Try again."
+      )
+    }
+
+    recognition.onresult = (event) => {
+      let interimTranscript = ""
+      let finalTranscript = ""
+
+      for (let i = event.resultIndex; i < event.results.length; i += 1) {
+        const result = event.results[i]
+        const transcript = result[0].transcript
+        if (result.isFinal) {
+          finalTranscript += transcript
+        } else {
+          interimTranscript += transcript
+        }
+      }
+
+      const nextDraft = (finalTranscript || interimTranscript).trim()
+      if (nextDraft) {
+        setDraft(nextDraft)
+      }
+
+      const final = finalTranscript.trim()
+      if (final) {
+        setDraft("")
+        recognition.stop()
+        onSend(final)
+      }
+    }
+
+    recognition.start()
+  }
+
   return (
     <section
       aria-label="Conversation"
-      className="grain relative flex h-full min-h-0 flex-col border-r border-ink/10 bg-bone"
+      className={cn(
+        "grain relative flex h-full min-h-0 flex-col bg-bone transition-[border-radius,box-shadow,border-color,transform] duration-700 ease-[cubic-bezier(0.2,0.8,0.2,1)]",
+        focused
+          ? "overflow-hidden border border-terracotta/25 shadow-[0_32px_100px_-56px_rgba(14,42,61,0.65)]"
+          : "border-r border-ink/10",
+        className
+      )}
     >
       <Header />
 
@@ -102,37 +220,62 @@ const ChatPanel = ({
 
       <form
         onSubmit={handleSubmit}
-        className="relative z-[2] flex items-end gap-3 border-t border-ink/10 bg-bone px-7 py-4 sm:px-10"
+        className="relative z-[2] border-t border-ink/10 bg-bone px-7 py-4 sm:px-10"
       >
-        <textarea
-          value={draft}
-          onChange={(e) => setDraft(e.target.value)}
-          onKeyDown={handleKeyDown}
-          rows={1}
-          disabled={busy}
-          placeholder={
-            busy
-              ? "checking shadows…"
-              : "tell me where & when, and whether you want sun or shade"
-          }
-          aria-label="Message"
-          className={cn(
-            "min-h-[44px] max-h-32 flex-1 resize-none bg-transparent text-[15px] leading-snug text-ink outline-none placeholder:text-ink/35",
-            "disabled:opacity-60"
-          )}
-        />
-        <button
-          type="submit"
-          disabled={!draft.trim() || busy}
-          aria-label="Send message"
-          className={cn(
-            "shrink-0 rounded-full border border-ink px-5 py-2 text-[12.5px] font-medium uppercase tracking-[0.16em] text-ink",
-            "transition-all hover:bg-ink hover:text-bone",
-            "disabled:cursor-not-allowed disabled:border-ink/30 disabled:text-ink/30 disabled:hover:bg-transparent"
-          )}
-        >
-          ask
-        </button>
+        <div className="flex items-center gap-3">
+          <textarea
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            onKeyDown={handleKeyDown}
+            rows={1}
+            disabled={busy}
+            placeholder={
+              listening
+                ? "listening…"
+                : busy
+                  ? "checking shadows…"
+                  : "Tell me where & when, and whether you want sun or shade"
+            }
+            aria-label="Message"
+            className={cn(
+              "min-h-[44px] max-h-32 flex-1 resize-none bg-transparent py-2.5 text-[15px] leading-5 text-ink outline-none placeholder:text-ink/35",
+              "disabled:opacity-60"
+            )}
+          />
+          <button
+            type="button"
+            disabled={busy}
+            aria-label={listening ? "Stop voice input" : "Start voice input"}
+            aria-pressed={listening}
+            onClick={handleSpeechClick}
+            className={cn(
+              "grid h-10 w-10 shrink-0 place-items-center rounded-full border text-ink transition-all",
+              listening
+                ? "border-terracotta bg-terracotta text-bone shadow-[0_0_0_6px_rgba(199,107,69,0.12)]"
+                : "border-ink/35 hover:border-terracotta hover:text-terracotta",
+              "disabled:cursor-not-allowed disabled:border-ink/20 disabled:text-ink/25"
+            )}
+          >
+            <MicIcon active={listening} />
+          </button>
+          <button
+            type="submit"
+            disabled={!draft.trim() || busy}
+            aria-label="Send message"
+            className={cn(
+              "inline-flex h-10 shrink-0 items-center justify-center rounded-full border border-ink px-5 text-[12.5px] font-medium uppercase tracking-[0.16em] text-ink",
+              "transition-all hover:bg-ink hover:text-bone",
+              "disabled:cursor-not-allowed disabled:border-ink/30 disabled:text-ink/30 disabled:hover:bg-transparent"
+            )}
+          >
+            ask
+          </button>
+        </div>
+        {speechError && (
+          <p className="mt-2 text-[11px] leading-snug text-terracotta-deep">
+            {speechError}
+          </p>
+        )}
       </form>
     </section>
   )
@@ -149,6 +292,30 @@ const Header = () => (
       </h1>
     </div>
   </header>
+)
+
+const MicIcon = ({ active }: { active: boolean }) => (
+  <svg
+    viewBox="0 0 24 24"
+    className="h-4.5 w-4.5"
+    fill="none"
+    aria-hidden="true"
+  >
+    <path
+      d="M12 14.25a3.25 3.25 0 0 0 3.25-3.25V6.75a3.25 3.25 0 0 0-6.5 0V11A3.25 3.25 0 0 0 12 14.25Z"
+      stroke="currentColor"
+      strokeWidth="1.7"
+    />
+    <path
+      d="M18 10.75a6 6 0 0 1-12 0M12 16.75v3M9 19.75h6"
+      stroke="currentColor"
+      strokeWidth="1.7"
+      strokeLinecap="round"
+    />
+    {active && (
+      <circle cx="18.5" cy="5.5" r="2" fill="currentColor" />
+    )}
+  </svg>
 )
 
 export default ChatPanel

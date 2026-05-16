@@ -85,7 +85,7 @@ const makeMarkerEl = (
       : "bg-ink border-terracotta shadow-[0_0_14px_2px_rgba(74,85,102,0.45)]"
     : "bg-bone-soft border-ink-soft/30 opacity-55"
   wrapper.innerHTML = `
-    <span class="block h-3.5 w-3.5 rounded-full border-2 ${ring} transition-all duration-300 group-hover:scale-125"></span>
+    <span class="block h-2.5 w-2.5 rounded-full border ${ring} transition-all duration-300 group-hover:scale-125"></span>
     <span class="pointer-events-none absolute left-1/2 top-full mt-2 -translate-x-1/2 whitespace-nowrap rounded-sm bg-ink/95 px-2 py-1 text-[10px] font-medium uppercase tracking-[0.14em] text-bone opacity-0 transition-opacity duration-200 group-hover:opacity-100">${cafe.name}</span>
   `
   wrapper.addEventListener("click", onClick)
@@ -456,10 +456,10 @@ const StatusOverlay = ({ status }: { status: MapStatus }) => {
               <SunGlyph />
             </div>
             <p className="font-display text-2xl text-ink">
-              warming the map…
+              Warming the map…
             </p>
             <p className="mt-2 text-sm text-ink-soft/80">
-              loading Split &amp; the surrounding rooftops
+              Loading Split &amp; the surrounding rooftops
             </p>
           </>
         )}
