@@ -440,7 +440,9 @@ class FollowTheShadeDataSources:
         notes = ["Venue data from mock seed file assets/split_cafe_seed.json."]
         uncertainty = [reason]
         if self.data_mode == "actual":
-            verified = [venue for venue in venues if not _is_illustrative_demo_seed(venue)]
+            verified = [
+                venue for venue in venues if not _is_illustrative_demo_seed(venue)
+            ]
             if verified:
                 venues = verified
                 notes.append(
@@ -471,7 +473,9 @@ class FollowTheShadeDataSources:
         return {
             **cafe,
             "area": cafe.get("area") or seed_template.get("area", "Riva"),
-            "venue_type": cafe.get("venue_type") or seed_template.get("venue_type") or "venue",
+            "venue_type": cafe.get("venue_type")
+            or seed_template.get("venue_type")
+            or "venue",
             "venue_types": cafe.get("venue_types")
             or seed_template.get("venue_types")
             or [cafe.get("venue_type") or seed_template.get("venue_type") or "venue"],

@@ -1,7 +1,9 @@
 <!-- BEGIN:nextjs-agent-rules -->
+
 # This is NOT the Next.js you know
 
 This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` before writing any code. Heed deprecation notices.
+
 <!-- END:nextjs-agent-rules -->
 
 # Follow the Shade — Agent Playbook
@@ -16,14 +18,14 @@ Full backend research and API notes live in `BACKEND.md`. This file is the opera
 
 Judges sit through 20+ pitches. Optimize for **one jaw-drop moment**, **polished design**, and **a demo that sells itself**.
 
-| Principle | What it means for agents |
-|-----------|--------------------------|
-| **Be innovative** | Lead with the wow: *real building-shadow analysis on Split terraces for a specific time window* — not “another chatbot with a map.” Make the sun/shade transition visible (map markers, timeline samples, or shadow overlay). |
-| **Design matters** | Ugly kills credibility. Mediterranean warmth, clear typography, confident spacing. No filter panels — chat + map only. Polish beats features. |
-| **Keep demo short** | Record a **≤1 min** silent interactive walkthrough (no voiceover). Let the product speak. Rehearse these queries (see Demo Script). |
-| **Keep pitch simple** | One line: *“Tell us where and when you want to sit outside in Split — we check which terraces are actually sunny or shaded.”* Three beats: problem → magic moment → why only us. |
-| **Sell the idea** | Copy and UI sell confidence and locality (“Split-only”, honest uncertainty). Never over-promise live occupancy or perfect terrace GPS. |
-| **Be on time** | **Freeze after submission.** No prod pushes or risky refactors before stage. Bug fixes only. |
+| Principle             | What it means for agents                                                                                                                                                                                                      |
+| --------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Be innovative**     | Lead with the wow: _real building-shadow analysis on Split terraces for a specific time window_ — not “another chatbot with a map.” Make the sun/shade transition visible (map markers, timeline samples, or shadow overlay). |
+| **Design matters**    | Ugly kills credibility. Mediterranean warmth, clear typography, confident spacing. No filter panels — chat + map only. Polish beats features.                                                                                 |
+| **Keep demo short**   | Record a **≤1 min** silent interactive walkthrough (no voiceover). Let the product speak. Rehearse these queries (see Demo Script).                                                                                           |
+| **Keep pitch simple** | One line: _“Tell us where and when you want to sit outside in Split — we check which terraces are actually sunny or shaded.”_ Three beats: problem → magic moment → why only us.                                              |
+| **Sell the idea**     | Copy and UI sell confidence and locality (“Split-only”, honest uncertainty). Never over-promise live occupancy or perfect terrace GPS.                                                                                        |
+| **Be on time**        | **Freeze after submission.** No prod pushes or risky refactors before stage. Bug fixes only.                                                                                                                                  |
 
 ---
 
@@ -87,13 +89,13 @@ Optional polish: Mapbox shadow simulator overlay for visual validation — never
 
 **Response fields to use:**
 
-| Field | Use |
-|-------|-----|
-| `answer` | Assistant prose in chat |
-| `analysis_id` | Reload / deep-link recovery |
+| Field         | Use                                                   |
+| ------------- | ----------------------------------------------------- |
+| `answer`      | Assistant prose in chat                               |
+| `analysis_id` | Reload / deep-link recovery                           |
 | `map_payload` | **Only** source for map markers, scores, time samples |
-| `sources` | Optional attribution list |
-| `audio` | When `include_audio=true` |
+| `sources`     | Optional attribution list                             |
+| `audio`       | When `include_audio=true`                             |
 
 **Recovery:** `GET /chat/analysis/{analysis_id}` if the page reloads.
 
@@ -177,8 +179,13 @@ Agents must keep contracts stable so frontend and backend can work in parallel.
 ```json
 {
   "analysis_id": "...",
-  "answer_facts": { "best_matches": [], "preference": "shade", "time_window_label": "...", "important_nuance": "..." },
-  "map_payload": { }
+  "answer_facts": {
+    "best_matches": [],
+    "preference": "shade",
+    "time_window_label": "...",
+    "important_nuance": "..."
+  },
+  "map_payload": {}
 }
 ```
 
@@ -229,10 +236,10 @@ Prepare `assets/split_cafe_seed.json` (8–12 known venue terraces) if APIs or t
 
 ## Source of Truth
 
-| Topic | Document |
-|-------|----------|
-| API research, file list, algorithms | `BACKEND.md` |
-| Agent behavior, hackathon constraints, contracts | This file |
-| Next.js APIs | `node_modules/next/dist/docs/` |
+| Topic                                            | Document                       |
+| ------------------------------------------------ | ------------------------------ |
+| API research, file list, algorithms              | `BACKEND.md`                   |
+| Agent behavior, hackathon constraints, contracts | This file                      |
+| Next.js APIs                                     | `node_modules/next/dist/docs/` |
 
 When `BACKEND.md` and this file conflict on **product behavior**, follow this file. When they conflict on **implementation detail**, follow `BACKEND.md`.

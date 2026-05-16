@@ -296,7 +296,9 @@ class FollowTheShadePipeline:
                 height_estimated=height_estimated,
             )
             exposure = _weather_adjusted_exposure(exposure, parsed, weather)
-            results.append(self._build_result(venue, terrace, exposure, parsed, weather))
+            results.append(
+                self._build_result(venue, terrace, exposure, parsed, weather)
+            )
 
         ranked = sorted(
             results,

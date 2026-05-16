@@ -155,9 +155,11 @@ class GooglePlacesClient:
                 except httpx.HTTPStatusError as exc:
                     log.warning(
                         "Google Places legacy nearby venue search failed (%s): %s",
-                        exc.response.status_code
-                        if exc.response is not None
-                        else "unknown",
+                        (
+                            exc.response.status_code
+                            if exc.response is not None
+                            else "unknown"
+                        ),
                         _response_detail(exc.response),
                     )
                     continue

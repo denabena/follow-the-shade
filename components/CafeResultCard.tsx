@@ -1,29 +1,34 @@
-"use client"
+"use client";
 
-import type { CafeResult, IntentRequest } from "@/lib/types"
-import { cn } from "@/lib/cn"
-import { formatPercent } from "@/lib/format"
-import SunTimelineBar from "./SunTimelineBar"
+import type { CafeResult, IntentRequest } from "@/lib/types";
+import { cn } from "@/lib/cn";
+import { formatPercent } from "@/lib/format";
+import SunTimelineBar from "./SunTimelineBar";
 
 type Props = {
-  result: CafeResult
-  intent: IntentRequest
-  onSelect: () => void
-  onShadeSampleTime?: (time: Date) => void
-}
+  result: CafeResult;
+  intent: IntentRequest;
+  onSelect: () => void;
+  onShadeSampleTime?: (time: Date) => void;
+};
 
-const CafeResultCard = ({ result, intent, onSelect, onShadeSampleTime }: Props) => {
-  const { cafe, sunFraction, headline, nuance, matches, timeline } = result
+const CafeResultCard = ({
+  result,
+  intent,
+  onSelect,
+  onShadeSampleTime,
+}: Props) => {
+  const { cafe, sunFraction, headline, nuance, matches, timeline } = result;
   const locationLine = cafe.venueType
     ? `${cafe.venueType} - ${cafe.neighborhood}`
-    : cafe.neighborhood
+    : cafe.neighborhood;
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
     if (e.key === "Enter" || e.key === " ") {
-      e.preventDefault()
-      onSelect()
+      e.preventDefault();
+      onSelect();
     }
-  }
+  };
 
   return (
     <div
@@ -37,7 +42,7 @@ const CafeResultCard = ({ result, intent, onSelect, onShadeSampleTime }: Props) 
         "fts-fade-up",
         matches
           ? "border-terracotta/40 hover:border-terracotta hover:-translate-y-0.5"
-          : "border-ink/10 opacity-80 hover:opacity-100"
+          : "border-ink/10 opacity-80 hover:opacity-100",
       )}
     >
       <div className="flex items-baseline justify-between gap-3">
@@ -53,7 +58,7 @@ const CafeResultCard = ({ result, intent, onSelect, onShadeSampleTime }: Props) 
           <p
             className={cn(
               "font-display text-[15px] leading-none",
-              intent.preference === "sun" ? "text-terracotta" : "text-ink-soft"
+              intent.preference === "sun" ? "text-terracotta" : "text-ink-soft",
             )}
           >
             {headline}
@@ -64,9 +69,7 @@ const CafeResultCard = ({ result, intent, onSelect, onShadeSampleTime }: Props) 
         </div>
       </div>
 
-      <p className="mt-3 text-[13px] leading-snug text-ink/75">
-        {cafe.blurb}
-      </p>
+      <p className="mt-3 text-[13px] leading-snug text-ink/75">{cafe.blurb}</p>
 
       <div className="mt-3">
         <SunTimelineBar
@@ -83,7 +86,7 @@ const CafeResultCard = ({ result, intent, onSelect, onShadeSampleTime }: Props) 
         </p>
       )}
     </div>
-  )
-}
+  );
+};
 
-export default CafeResultCard
+export default CafeResultCard;

@@ -1,19 +1,25 @@
-"use client"
+"use client";
 
-import type { AnalysisProgress, IntentRequest } from "@/lib/types"
-import { formatClock, formatTimeWindow } from "@/lib/format"
+import type { AnalysisProgress, IntentRequest } from "@/lib/types";
+import { formatClock, formatTimeWindow } from "@/lib/format";
 
 type Props = {
-  progress: AnalysisProgress | null
-  intent: IntentRequest
-}
+  progress: AnalysisProgress | null;
+  intent: IntentRequest;
+};
 
 const AnalysisOverlay = ({ progress, intent }: Props) => {
   const pct = progress
-    ? Math.min(100, ((progress.stepIndex + progress.cafesSampled / progress.totalCafes) /
-        progress.totalSteps) * 100)
-    : 0
-  const clock = progress ? formatClock(progress.currentTime) : formatClock(intent.windowStart)
+    ? Math.min(
+        100,
+        ((progress.stepIndex + progress.cafesSampled / progress.totalCafes) /
+          progress.totalSteps) *
+          100,
+      )
+    : 0;
+  const clock = progress
+    ? formatClock(progress.currentTime)
+    : formatClock(intent.windowStart);
 
   return (
     <div
@@ -48,7 +54,7 @@ const AnalysisOverlay = ({ progress, intent }: Props) => {
         </div>
       </div>
     </div>
-  )
-}
+  );
+};
 
-export default AnalysisOverlay
+export default AnalysisOverlay;

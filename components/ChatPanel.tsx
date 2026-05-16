@@ -409,7 +409,7 @@ const ChatPanel = ({
                   ? "Checking shadows…"
                   : "Restaurant, bar, cafe - where and when?"
             }
-                aria-label="Venue, place, time, sun or shade"
+            aria-label="Venue, place, time, sun or shade"
             className={cn(
               "min-h-[44px] max-h-32 flex-1 resize-none bg-transparent py-2.5 text-[15px] leading-5 text-ink outline-none placeholder:text-ink/35",
               "disabled:opacity-60",

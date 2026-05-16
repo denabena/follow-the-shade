@@ -10,7 +10,9 @@ const parseDate = (value: string): Date => {
   return new Date();
 };
 
-const formatVenueType = (value: MapPayloadResult["venue_type"]): string | undefined => {
+const formatVenueType = (
+  value: MapPayloadResult["venue_type"],
+): string | undefined => {
   if (!value || value === "venue") return undefined;
   if (value === "night_club") return "Nightclub";
   return value.charAt(0).toUpperCase() + value.slice(1);
@@ -58,23 +60,22 @@ const formatAddressForDisplay = (address: string): string => {
 };
 
 const toCafe = (result: MapPayloadResult): Cafe => {
-  const streetLine = formatAddressForDisplay(result.address).trim()
+  const streetLine = formatAddressForDisplay(result.address).trim();
   const fallbackArea =
     typeof result.area === "string" && result.area.trim()
       ? result.area.trim()
-      : ""
+      : "";
   return {
     id: result.id,
     name: result.name,
     venueType: formatVenueType(result.venue_type),
-    neighborhood:
-      streetLine.length > 0 ? streetLine : fallbackArea,
+    neighborhood: streetLine.length > 0 ? streetLine : fallbackArea,
     blurb: result.exposure.summary,
     lng: result.terrace_point.lng,
     lat: result.terrace_point.lat,
     google_maps_uri: result.google_maps_uri,
     place_photo_p: result.place_photo_p,
-  }
+  };
 };
 
 const toTimeline = (result: MapPayloadResult): TimelinePoint[] =>
