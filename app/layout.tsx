@@ -1,4 +1,5 @@
 import type { Metadata } from "next"
+import { ClerkProvider } from "@clerk/nextjs"
 import { Fraunces, Geist } from "next/font/google"
 import "mapbox-gl/dist/mapbox-gl.css"
 import "./globals.css"
@@ -39,7 +40,7 @@ export default function RootLayout({
         className="bg-bone text-ink min-h-full"
         suppressHydrationWarning
       >
-        {children}
+        <ClerkProvider>{children}</ClerkProvider>
       </body>
     </html>
   )

@@ -4,6 +4,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 
 from app.analysis_store import InMemoryAnalysisStore
+from app.user_preferences_store import UserPreferencesStore
 from app.state import AppState
 from core.config import settings
 from core.logging_config import configure_logging
@@ -25,6 +26,7 @@ async def lifespan(app: FastAPI):
     log.info("--- Starting Follow the Shade agent ---")
 
     analysis_store = InMemoryAnalysisStore(ttl_seconds=settings.SESSION_TTL_SECONDS)
+    preferences_store = UserPreferencesStore(settings.USER_PREFERENCES_PATH)
     upstream_cache = TtlCache(ttl_seconds=settings.FOLLOW_THE_SHADE_CACHE_TTL_SECONDS)
     tool = FindSplitCafeSunShadeTool(
         analysis_store=analysis_store,
@@ -39,6 +41,7 @@ async def lifespan(app: FastAPI):
         analysis_store=analysis_store,
         upstream_cache=upstream_cache,
         agent=agent,
+        preferences_store=preferences_store,
     )
 
     log.info("--- Initialization complete. Server is ready. ---")

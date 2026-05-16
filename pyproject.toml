@@ -8,6 +8,7 @@ dependencies = [
     "astral>=3.2",
     "fastapi>=0.128.5",
     "httpx>=0.28.1",
+    "pyjwt[crypto]>=2.10.0",
     "pydantic-settings>=2.12.0",
     "pyproj>=3.7.0",
     "shapely>=2.0.0",

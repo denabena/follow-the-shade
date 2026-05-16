@@ -10,6 +10,7 @@ class AppState:
     analysis_store: Any
     upstream_cache: Any
     agent: Any
+    preferences_store: Any
 
 
 def get_state(request: Request) -> AppState:

@@ -20,8 +20,10 @@ from app.api.chat.schemas import (
     SpeechTtsTemporaryKeyRequest,
     SpeechTtsTemporaryKeyResponse,
 )
+from app.auth.deps import get_optional_user_id
 from app.state import AppState, get_state
 from core.config import settings
+from services.follow_the_shade.preference_query import enrich_query_with_preferences
 
 log = logging.getLogger(__name__)
 
@@ -261,9 +263,15 @@ async def create_soniox_tts_key(
 async def chat_final_answer(
     chat_request: ChatRequest,
     state: AppState = Depends(get_state),
+    user_id: str | None = Depends(get_optional_user_id),
 ) -> ChatResponse:
+    message = chat_request.text
+    if user_id:
+        prefs = state.preferences_store.get(user_id)
+        message = enrich_query_with_preferences(message, prefs)
+
     result = await state.agent.answer(
-        message=chat_request.text,
+        message=message,
         thread_id=chat_request.thread_id,
     )
 

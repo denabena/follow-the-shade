@@ -43,5 +43,18 @@ class Settings(BaseSettings):
     LOG_LEVEL: str = "INFO"
     ACCEPT_LOG_LEVEL: str = "INFO"
 
+    CLERK_ISSUER: Optional[str] = None
+    CLERK_JWKS_URL: Optional[str] = None
+    CLERK_JWT_PUBLIC_KEY: Optional[str] = None
+    USER_PREFERENCES_PATH: str = "data/user_preferences.json"
+
+    @property
+    def clerk_jwks_url(self) -> str | None:
+        if self.CLERK_JWKS_URL:
+            return self.CLERK_JWKS_URL
+        if self.CLERK_ISSUER:
+            return f"{self.CLERK_ISSUER.rstrip('/')}/.well-known/jwks.json"
+        return None
+
 
 settings = Settings()

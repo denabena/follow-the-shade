@@ -44,6 +44,9 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
+# local user prefs (auth MVP)
+/data/
+
 # python
 __pycache__/
 *.py[cod]

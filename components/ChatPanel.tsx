@@ -1,5 +1,7 @@
 "use client"
 
+import { UserButton } from "@clerk/nextjs"
+import Link from "next/link"
 import { useEffect, useRef, useState } from "react"
 import type { Cafe } from "@/lib/types"
 import { cn } from "@/lib/cn"
@@ -282,7 +284,7 @@ const ChatPanel = ({
 }
 
 const Header = () => (
-  <header className="relative z-[2] flex items-baseline justify-between gap-4 px-7 pb-3 pt-7 sm:px-10">
+  <header className="relative z-[2] flex items-start justify-between gap-4 px-7 pb-3 pt-7 sm:px-10">
     <div>
       <p className="font-mono text-[10px] uppercase tracking-[0.32em] text-terracotta-deep">
         Split · sun &amp; shade
@@ -290,6 +292,15 @@ const Header = () => (
       <h1 className="font-display text-[34px] leading-[1.05] tracking-tight text-ink">
         Follow the Shade
       </h1>
+    </div>
+    <div className="flex shrink-0 items-center gap-3 pt-1">
+      <Link
+        href="/settings"
+        className="text-[11px] font-medium uppercase tracking-[0.14em] text-ink/55 hover:text-ink"
+      >
+        prefs
+      </Link>
+      <UserButton />
     </div>
   </header>
 )
