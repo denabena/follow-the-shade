@@ -155,6 +155,61 @@ def test_google_places_nearby_venues_uses_requested_types() -> None:
             )
         )
 
-    payload = post_mock.await_args.kwargs["json"]
-    assert payload["includedTypes"] == ["bar", "night_club"]
+    assert post_mock.await_count == 2
+    payloads = [call.kwargs["json"] for call in post_mock.await_args_list]
+    assert payloads[0]["includedPrimaryTypes"] == [
+        "bar",
+        "bar_and_grill",
+        "beer_garden",
+        "brewery",
+        "brewpub",
+    ]
+    assert payloads[1]["includedPrimaryTypes"] == [
+        "night_club",
+        "dance_hall",
+        "live_music_venue",
+    ]
     assert [venue["venue_type"] for venue in venues] == ["bar", "night_club"]
+
+
+def test_google_places_maps_bar_like_primary_types_to_bar() -> None:
+    new_response = _json_response(
+        "POST",
+        NEARBY_NEW_URL,
+        200,
+        {
+            "places": [
+                {
+                    "id": "bar-grill-place-1",
+                    "displayName": {"text": "Harbour Bar & Grill"},
+                    "formattedAddress": "Riva, Split, Croatia",
+                    "location": {"latitude": 43.5082, "longitude": 16.4392},
+                    "primaryType": "bar_and_grill",
+                    "types": ["bar_and_grill", "restaurant", "food", "bar"],
+                    "businessStatus": "OPERATIONAL",
+                }
+            ]
+        },
+    )
+
+    with patch(
+        "httpx.AsyncClient.post", new_callable=AsyncMock, return_value=new_response
+    ) as post_mock:
+        venues = asyncio.run(
+            GooglePlacesClient("test-key").nearby_venues(
+                43.5081,
+                16.4391,
+                venue_types=("bar",),
+            )
+        )
+
+    payload = post_mock.await_args.kwargs["json"]
+    assert payload["includedPrimaryTypes"] == [
+        "bar",
+        "bar_and_grill",
+        "beer_garden",
+        "brewery",
+        "brewpub",
+    ]
+    assert venues[0]["venue_type"] == "bar"
+    assert venues[0]["venue_types"] == ["bar", "restaurant"]

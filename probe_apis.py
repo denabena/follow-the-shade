@@ -58,9 +58,23 @@ async def probe_google_places_new() -> tuple[int | str, int, str]:
         return "SKIP", 0, "missing key"
 
     payload = {
-        "includedTypes": ["cafe", "restaurant", "bar", "night_club"],
+        "includedPrimaryTypes": [
+            "cafe",
+            "restaurant",
+            "bistro",
+            "bar",
+            "bar_and_grill",
+            "beer_garden",
+            "brewery",
+            "brewpub",
+            "night_club",
+            "dance_hall",
+            "live_music_venue",
+        ],
         "maxResultCount": 5,
-        "rankPreference": "POPULARITY",
+        "rankPreference": "DISTANCE",
+        "languageCode": "en",
+        "regionCode": "HR",
         "locationRestriction": {
             "circle": {
                 "center": {"latitude": CENTER["lat"], "longitude": CENTER["lng"]},
@@ -71,7 +85,7 @@ async def probe_google_places_new() -> tuple[int | str, int, str]:
     headers = {
         "Content-Type": "application/json",
         "X-Goog-Api-Key": api_key,
-        "X-Goog-FieldMask": "places.id,places.displayName,places.location,places.rating,places.outdoorSeating",
+        "X-Goog-FieldMask": "places.id,places.displayName,places.location,places.rating,places.businessStatus,places.outdoorSeating,places.primaryType,places.types",
     }
     async with httpx.AsyncClient(timeout=20.0) as client:
         response = await client.post(
