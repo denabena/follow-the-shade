@@ -320,6 +320,12 @@ class FollowTheShadePipeline:
             "results": ranked,
             "source_notes": source_notes,
         }
+        answer_facts = _build_answer_facts(
+            parsed=parsed,
+            ranked=ranked,
+            weather=weather,
+            source_notes=source_notes,
+        )
         self._remember_thread_context(thread_id, parsed)
 
         weather_blocks_direct_sun = _weather_blocks_direct_sun(weather)
@@ -341,6 +347,7 @@ class FollowTheShadePipeline:
             "answer": answer,
             "thread_id": thread_id,
             "analysis_id": analysis_id,
+            "answer_facts": answer_facts,
             "map_payload": map_payload,
             "sources": source_notes,
             "detected_language": parsed.language,
@@ -763,6 +770,114 @@ def _locality_score(
         0.25 if cafe_area and cafe_area.lower() in requested_area.lower() else 0.0
     )
     return min(1.0, proximity + area_bonus)
+
+
+def _build_answer_facts(
+    *,
+    parsed: ParsedRequest,
+    ranked: list[dict[str, Any]],
+    weather: dict[str, Any],
+    source_notes: list[str],
+) -> dict[str, Any]:
+    assert parsed.start and parsed.end
+    return {
+        "request": {
+            "preference": parsed.preference,
+            "location": parsed.location_label,
+            "time_window": {
+                "start": parsed.start.isoformat(timespec="seconds"),
+                "end": parsed.end.isoformat(timespec="seconds"),
+                "label": f"{_short_time(parsed.start)}-{_short_time(parsed.end)}",
+            },
+        },
+        "weather": _weather_answer_context(weather),
+        "best_matches": [_answer_match_fact(result) for result in ranked],
+        "source_context": {
+            "uses_google_places": any(
+                result.get("provider") == "google_places" for result in ranked
+            ),
+            "uses_open_meteo": any(value is not None for value in weather.values()),
+            "notes": source_notes,
+        },
+        "response_guidance": (
+            "Use these facts to recommend the strongest cafe by name and optionally "
+            "one backup. Mention weather only when it changes how sun or shade will "
+            "feel. Do not mention provider names, internal tools, estimated geometry, "
+            "or implementation caveats unless the user asks."
+        ),
+    }
+
+
+def _answer_match_fact(result: dict[str, Any]) -> dict[str, Any]:
+    exposure = result.get("exposure") or {}
+    outdoor_seating = result.get("outdoor_seating") or {}
+    return {
+        "name": result.get("name"),
+        "area": result.get("area"),
+        "address": result.get("address"),
+        "provider": result.get("provider"),
+        "rating": result.get("rating"),
+        "user_rating_count": result.get("user_rating_count"),
+        "open_for_window": result.get("is_open_for_window"),
+        "outdoor_seating_confidence": outdoor_seating.get("confidence"),
+        "match_score": exposure.get("match_score"),
+        "sun_ratio": exposure.get("sun_ratio"),
+        "exposure_summary": exposure.get("summary"),
+        "transition_notes": exposure.get("transition_notes") or [],
+        "samples": _compact_answer_samples(exposure.get("samples") or []),
+    }
+
+
+def _compact_answer_samples(samples: list[Any]) -> list[dict[str, str]]:
+    compact = []
+    for sample in samples[:8]:
+        if not isinstance(sample, dict):
+            continue
+        time_value = sample.get("time")
+        state = sample.get("state")
+        if not isinstance(time_value, str) or state not in {"sun", "shade"}:
+            continue
+        compact.append({"time": _sample_time_label(time_value), "state": state})
+    return compact
+
+
+def _sample_time_label(value: str) -> str:
+    try:
+        return datetime.fromisoformat(value).strftime("%H:%M")
+    except ValueError:
+        return value
+
+
+def _weather_answer_context(weather: dict[str, Any]) -> dict[str, Any]:
+    cloud_cover = weather.get("cloud_cover_avg")
+    precipitation_probability = weather.get("precipitation_probability_max")
+    precipitation_mm = weather.get("precipitation_mm_max")
+
+    if all(
+        value is None
+        for value in (cloud_cover, precipitation_probability, precipitation_mm)
+    ):
+        impact = "unknown"
+        user_summary = "Weather detail is unavailable; rely on geometric sun and shade."
+    elif _weather_blocks_direct_sun(weather):
+        impact = "direct_sun_blocked"
+        user_summary = (
+            "Rain or heavy cloud is expected, so direct sun will not feel reliable."
+        )
+    elif cloud_cover is not None and float(cloud_cover) > 60:
+        impact = "sun_muted"
+        user_summary = "Cloud cover may mute direct sun during the requested window."
+    else:
+        impact = "sun_feels_reliable"
+        user_summary = "No major weather issue is expected for direct sun."
+
+    return {
+        "cloud_cover_avg": cloud_cover,
+        "precipitation_probability_max": precipitation_probability,
+        "precipitation_mm_max": precipitation_mm,
+        "impact": impact,
+        "user_summary": user_summary,
+    }
 
 
 def _should_use_seed_pattern(
