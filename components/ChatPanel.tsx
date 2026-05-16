@@ -61,6 +61,9 @@ const weatherLabelFromCode = (code: number): string => {
   return "Variable conditions"
 }
 
+/** ~4 lines; grows until this, then scrolls inside the field */
+const TEXTAREA_MAX_HEIGHT_PX = 128
+
 type Props = {
   messages: ChatMessageData[]
   busy: boolean
@@ -105,9 +108,16 @@ const ChatPanel = ({
   useEffect(() => {
     const el = textareaRef.current
     if (!el) return
-    el.style.height = "auto"
-    el.style.height = `${el.scrollHeight}px`
-  }, [draft])
+    el.style.height = "0px"
+    const contentHeight = el.scrollHeight
+    if (contentHeight <= TEXTAREA_MAX_HEIGHT_PX) {
+      el.style.height = `${contentHeight}px`
+      el.style.overflowY = "hidden"
+    } else {
+      el.style.height = `${TEXTAREA_MAX_HEIGHT_PX}px`
+      el.style.overflowY = "auto"
+    }
+  }, [draft, busy, listening])
 
   useEffect(() => {
     const el = scrollerRef.current
@@ -384,14 +394,14 @@ const ChatPanel = ({
             disabled={busy}
             placeholder={
               listening
-                ? "listening…"
+                ? "Listening…"
                 : busy
-                  ? "checking shadows…"
-                  : "Tell me where & when, and whether you want sun or shade"
+                  ? "Checking shadows…"
+                  : "Where & when - sun or shade?"
             }
-            aria-label="Message"
+            aria-label="Where and when, sun or shade"
             className={cn(
-              "min-h-[44px] flex-1 resize-none overflow-hidden bg-transparent py-2.5 text-[15px] leading-5 text-ink outline-none placeholder:text-ink/35",
+              "min-h-[44px] max-h-32 flex-1 resize-none bg-transparent py-2.5 text-[15px] leading-5 text-ink outline-none placeholder:text-ink/35",
               "disabled:opacity-60"
             )}
           />
