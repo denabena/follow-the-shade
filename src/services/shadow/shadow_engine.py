@@ -85,7 +85,9 @@ def shadow_for_building(
     return shadow
 
 
-def sample_times(start: datetime, end: datetime, step_minutes: int = 20) -> list[datetime]:
+def sample_times(
+    start: datetime, end: datetime, step_minutes: int = 20
+) -> list[datetime]:
     if end <= start:
         return [start]
     samples = []
@@ -125,20 +127,20 @@ def analyze_terrace_exposure(
             samples.append(ExposureSample(time=when, state="shade"))
             continue
 
-        shadows = []
+        state: ExposureState = "sun"
         for poly_m, height_m in building_polys_m:
+            shadow_length_m = height_m / tan(radians(sun.elevation_deg))
+            if poly_m.distance(terrace_point) > shadow_length_m + 2.0:
+                continue
+
             shadow = shadow_for_building(
                 poly_m, height_m, sun.azimuth_deg, sun.elevation_deg
             )
-            if shadow is not None:
-                shadows.append(shadow)
-
-        if shadows:
-            union = unary_union(shadows)
-            in_shadow = union.contains(terrace_point) or union.touches(terrace_point)
-            state: ExposureState = "shade" if in_shadow else "sun"
-        else:
-            state = "sun"
+            if shadow is not None and (
+                shadow.contains(terrace_point) or shadow.touches(terrace_point)
+            ):
+                state = "shade"
+                break
 
         samples.append(ExposureSample(time=when, state=state))
 

@@ -1,6 +1,7 @@
 "use client";
 
 import { UserButton } from "@clerk/nextjs";
+import Link from "next/link";
 import { FormEvent, useEffect, useState } from "react";
 
 type Preferences = {
@@ -49,8 +50,8 @@ export default function SettingsPage() {
   }
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-lg flex-col justify-center px-6 py-8 text-ink">
-      <header className="mb-6 flex items-center justify-between">
+    <main className="mx-auto max-w-lg px-6 py-10 text-ink">
+      <header className="mb-8 flex items-center justify-between">
         <SettingsTitle />
         <UserButton />
       </header>
@@ -66,7 +67,8 @@ export default function SettingsPage() {
               onChange={(e) =>
                 setPrefs({
                   ...prefs,
-                  exposure_preference: e.target.value as Preferences["exposure_preference"],
+                  exposure_preference: e.target
+                    .value as Preferences["exposure_preference"],
                 })
               }
             >
@@ -98,7 +100,8 @@ export default function SettingsPage() {
               onChange={(e) =>
                 setPrefs({
                   ...prefs,
-                  default_time_preset: e.target.value as Preferences["default_time_preset"],
+                  default_time_preset: e.target
+                    .value as Preferences["default_time_preset"],
                 })
               }
             >
@@ -146,10 +149,10 @@ export default function SettingsPage() {
 function SettingsTitle() {
   return (
     <div>
-      <a href="/" className="text-sm text-terracotta-deep hover:underline">
+      <Link href="/" className="text-sm text-terracotta-deep hover:underline">
         ← Back to app
-      </a>
-      <h1 className="font-display mt-1 text-3xl">Your preferences</h1>
+      </Link>
+      <h1 className="font-display mt-2 text-3xl">Your preferences</h1>
     </div>
   );
 }

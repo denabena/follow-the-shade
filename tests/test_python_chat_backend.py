@@ -33,14 +33,17 @@ def test_final_answer_returns_map_payload() -> None:
             return_value=_sample_building(),
         ),
         patch(
-            "services.geodata.overpass_client.OverpassClient.fetch_outdoor_seating_near",
+            "services.geodata.overpass_client.OverpassClient.fetch_outdoor_seating",
             new_callable=AsyncMock,
             return_value=[],
         ),
         patch(
             "services.weather.open_meteo.OpenMeteoClient.window_weather",
             new_callable=AsyncMock,
-            return_value={"cloud_cover_avg": 20.0, "precipitation_probability_max": 5.0},
+            return_value={
+                "cloud_cover_avg": 20.0,
+                "precipitation_probability_max": 5.0,
+            },
         ),
         TestClient(app) as client,
     ):
@@ -69,14 +72,17 @@ def test_between_and_time_window_returns_map_payload() -> None:
             return_value=_sample_building(),
         ),
         patch(
-            "services.geodata.overpass_client.OverpassClient.fetch_outdoor_seating_near",
+            "services.geodata.overpass_client.OverpassClient.fetch_outdoor_seating",
             new_callable=AsyncMock,
             return_value=[],
         ),
         patch(
             "services.weather.open_meteo.OpenMeteoClient.window_weather",
             new_callable=AsyncMock,
-            return_value={"cloud_cover_avg": 20.0, "precipitation_probability_max": 5.0},
+            return_value={
+                "cloud_cover_avg": 20.0,
+                "precipitation_probability_max": 5.0,
+            },
         ),
         TestClient(app) as client,
     ):
@@ -92,12 +98,12 @@ def test_between_and_time_window_returns_map_payload() -> None:
     assert response.status_code == 200
     assert payload["analysis_id"]
     assert payload["map_payload"]["request"]["preference"] == "sun"
-    assert payload["map_payload"]["request"]["start"].endswith("15:00:00+01:00") or payload[
-        "map_payload"
-    ]["request"]["start"].endswith("15:00:00+02:00")
-    assert payload["map_payload"]["request"]["end"].endswith("17:00:00+01:00") or payload[
-        "map_payload"
-    ]["request"]["end"].endswith("17:00:00+02:00")
+    assert payload["map_payload"]["request"]["start"].endswith(
+        "15:00:00+01:00"
+    ) or payload["map_payload"]["request"]["start"].endswith("15:00:00+02:00")
+    assert payload["map_payload"]["request"]["end"].endswith(
+        "17:00:00+01:00"
+    ) or payload["map_payload"]["request"]["end"].endswith("17:00:00+02:00")
 
 
 def test_analysis_recovery_returns_saved_payload() -> None:
@@ -108,14 +114,17 @@ def test_analysis_recovery_returns_saved_payload() -> None:
             return_value=_sample_building(),
         ),
         patch(
-            "services.geodata.overpass_client.OverpassClient.fetch_outdoor_seating_near",
+            "services.geodata.overpass_client.OverpassClient.fetch_outdoor_seating",
             new_callable=AsyncMock,
             return_value=[],
         ),
         patch(
             "services.weather.open_meteo.OpenMeteoClient.window_weather",
             new_callable=AsyncMock,
-            return_value={"cloud_cover_avg": 10.0, "precipitation_probability_max": 0.0},
+            return_value={
+                "cloud_cover_avg": 10.0,
+                "precipitation_probability_max": 0.0,
+            },
         ),
         TestClient(app) as client,
     ):
@@ -132,7 +141,9 @@ def test_analysis_recovery_returns_saved_payload() -> None:
     assert response.status_code == 200
     assert payload["analysis_id"] == chat["analysis_id"]
     assert payload["map_payload"]["results"]
-    names = " ".join(result["name"] for result in payload["map_payload"]["results"]).lower()
+    names = " ".join(
+        result["name"] for result in payload["map_payload"]["results"]
+    ).lower()
     assert "bacvice" in names or any(
         result.get("area", "").lower() == "bacvice"
         for result in payload["map_payload"]["results"]

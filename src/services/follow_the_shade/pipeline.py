@@ -6,6 +6,7 @@ import math
 import re
 import unicodedata
 import uuid
+import asyncio
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -155,22 +156,37 @@ class FollowTheShadePipeline:
                 "detected_language": parsed.language,
             }
 
-        building_summary = await self.data_sources.building_summary(
+        building_task = self.data_sources.building_summary(
             center=parsed.center,
             radius_m=450,
         )
-        buildings = building_summary.buildings
-        height_estimated = building_summary.height_estimates_used
-        weather_summary = await self.data_sources.weather_summary(
+        weather_task = self.data_sources.weather_summary(
             center=parsed.center,
             start=parsed.start,
             end=parsed.end,
         )
+        outdoor_seating_task = self.data_sources.outdoor_seating_summary(
+            center=parsed.center,
+            radius_m=parsed.radius_m,
+        )
+        building_summary, weather_summary, outdoor_seating_summary = (
+            await asyncio.gather(
+                building_task,
+                weather_task,
+                outdoor_seating_task,
+            )
+        )
+        buildings = building_summary.buildings
+        height_estimated = building_summary.height_estimates_used
         weather = weather_summary.to_result_weather()
 
         results = []
         for cafe in cafes[:12]:
-            terrace = await self._resolve_terrace(cafe, parsed.center)
+            terrace = self._resolve_terrace(
+                cafe,
+                parsed.center,
+                outdoor_seating_summary.points,
+            )
             exposure = self._analyze_cafe_exposure(
                 cafe=cafe,
                 terrace=terrace,
@@ -198,7 +214,10 @@ class FollowTheShadePipeline:
 
         analysis_id = f"shade_{parsed.start:%Y%m%d}_{uuid.uuid4().hex[:8]}"
         source_notes = self._source_notes(
-            cafe_bundle, building_summary, weather_summary
+            cafe_bundle,
+            building_summary,
+            weather_summary,
+            outdoor_seating_summary,
         )
         map_payload = {
             "analysis_id": analysis_id,
@@ -275,8 +294,11 @@ class FollowTheShadePipeline:
             merged.append(cafe)
         return merged
 
-    async def _resolve_terrace(
-        self, cafe: dict[str, Any], search_center: dict[str, float]
+    def _resolve_terrace(
+        self,
+        cafe: dict[str, Any],
+        search_center: dict[str, float],
+        outdoor_seating_points: list[dict[str, Any]],
     ) -> dict[str, Any]:
         if cafe.get("outdoor_seating_confidence") == "high":
             return {
@@ -295,9 +317,11 @@ class FollowTheShadePipeline:
                 ),
             }
 
-        seating = await self.overpass.fetch_outdoor_seating_near(
-            cafe["location"], radius_m=35.0
-        )
+        seating = [
+            point
+            for point in outdoor_seating_points
+            if haversine_m(cafe["location"], point) <= 35.0
+        ]
         if seating:
             closest = min(
                 seating,
@@ -312,6 +336,10 @@ class FollowTheShadePipeline:
         if cafe.get("outdoor_seating") is True or cafe.get("provider") == "demo_seed":
             ring = _ring_point(cafe["location"], bearing_deg=45.0, distance_m=8.0)
             return {**ring, "confidence": "medium"}
+
+        if cafe.get("provider") == "google_places":
+            ring = _ring_point(cafe["location"], bearing_deg=45.0, distance_m=8.0)
+            return {**ring, "confidence": "low"}
 
         return {
             "lat": cafe["terrace_point"]["lat"],
@@ -399,14 +427,17 @@ class FollowTheShadePipeline:
         cafe_bundle: CafeCandidateBundle,
         building_summary: BuildingSummary,
         weather_summary: WeatherSummary,
+        outdoor_seating_summary: Any,
     ) -> list[str]:
         notes = [
             *cafe_bundle.source_notes,
             *building_summary.source_notes,
             *weather_summary.source_notes,
+            *outdoor_seating_summary.source_notes,
             *cafe_bundle.uncertainty_notes,
             *building_summary.uncertainty_notes,
             *weather_summary.uncertainty_notes,
+            *outdoor_seating_summary.uncertainty_notes,
         ]
         unique_notes = []
         for note in notes:
@@ -663,7 +694,7 @@ def _parse_time_window(
 ) -> tuple[datetime, datetime, Period] | None:
     date = _parse_date(query, now)
     explicit = re.search(
-        r"(?:from\s*)?(\d{1,2})(?::(\d{2}))?\s*(am|pm)?\s*(?:-|to|until)\s*(\d{1,2})(?::(\d{2}))?\s*(am|pm)?",
+        r"(?:from\s*)?(\d{1,2})(?::(\d{2}))?\s*(am|pm)?\s*(?:-|to|until|and)\s*(\d{1,2})(?::(\d{2}))?\s*(am|pm)?",
         query,
     )
     if explicit:
