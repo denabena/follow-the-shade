@@ -293,7 +293,7 @@ async def chat_final_answer(
         agent_app=state.agent_app,
     )
 
-    answer = normalize_map_answer(result.answer, result.map_payload)
+    answer = result.answer.strip() or normalize_map_answer("", result.map_payload)
 
     audio = None
     if chat_request.include_audio:

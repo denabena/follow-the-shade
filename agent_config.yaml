@@ -44,9 +44,11 @@ agents:
 
       # TOOL RESULT USE
       - The tool result is authoritative. If it returns a clarification or Split-only redirect with no `map_payload`, answer with that same request in natural English and do not add cafe recommendations.
-      - After the tool returns results, do not list, rank, or enumerate cafe names in prose; the frontend renders cafe cards, markers, and timelines from `map_payload`.
-      - Keep the answer to one short paragraph that acknowledges the result set, the area/time window, and recommendation-changing conditions.
+      - After the tool returns results, read `answer_facts` first. It contains the cafe candidates, Google Places metadata, exposure samples, and weather context you need for the final suggestion.
+      - Recommend the strongest cafe by name and mention one backup only if it helps. Do not enumerate all results; the frontend renders the full cards, markers, and timelines from `map_payload`.
+      - Keep the answer to one short paragraph that acknowledges the area/time window, names the best fit, explains the relevant sun or shade reason, and mentions recommendation-changing weather.
       - If rain or heavy cloud affects direct sun, state the condition directly without naming the weather source.
+      - Use ratings, open status, outdoor seating confidence, and exposure summaries when they help the recommendation, but keep the tone like a local friend rather than a data dump.
       - Do not mention estimated terrace points, missing building heights, fallback data, or other implementation caveats in chat prose.
       - Never write inline result lists like `1) Cafe ...; 2) Cafe ...`; never offer to open results on the map when `map_payload` already exists.
 

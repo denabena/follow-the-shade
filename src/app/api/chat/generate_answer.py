@@ -37,6 +37,7 @@ _ENGLISH_ANSWER_COPY = {
 class ChatFlowResult:
     answer: str
     analysis_id: str | None = None
+    answer_facts: dict[str, Any] | None = None
     map_payload: dict[str, Any] | None = None
     sources: list[Any] = field(default_factory=list)
     detected_language: str | None = None
@@ -223,12 +224,15 @@ async def run_chat_flow(
 
             ai_text = (extract_ai_text(response) or "").strip()
             tool_payload = extract_tool_payload(response)
+            if tool_payload.get("map_payload"):
+                answer = ai_text or tool_payload.get("answer")
+            else:
+                answer = tool_payload.get("answer") or ai_text
             return ChatFlowResult(
-                answer=tool_payload.get("answer")
-                or ai_text
-                or "I checked that request for Split.",
+                answer=answer or "I checked that request for Split.",
                 detected_language="en",
                 analysis_id=tool_payload.get("analysis_id"),
+                answer_facts=tool_payload.get("answer_facts"),
                 map_payload=tool_payload.get("map_payload"),
                 sources=tool_payload.get("sources", []),
             )
@@ -272,6 +276,7 @@ def extract_tool_payload(response: dict[str, Any] | None) -> dict[str, Any]:
             return {
                 "answer": parsed.get("answer"),
                 "analysis_id": parsed.get("analysis_id"),
+                "answer_facts": parsed.get("answer_facts"),
                 "map_payload": parsed.get("map_payload"),
                 "sources": parsed.get("sources", []),
             }
