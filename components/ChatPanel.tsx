@@ -1,83 +1,87 @@
-"use client"
+"use client";
 
-import { useAuth } from "@clerk/nextjs"
-import Link from "next/link"
-import { useEffect, useRef, useState } from "react"
-import type { Cafe } from "@/lib/types"
-import { cn } from "@/lib/cn"
-import { formatZagrebDayTimeLabel } from "@/lib/format"
-import { suggestions, type SuggestionId } from "@/lib/intent"
-import ChatMessage, { type ChatMessageData } from "./ChatMessage"
-import { SunGlyph } from "@/components/SunGlyph"
+import { useAuth } from "@clerk/nextjs";
+import Link from "next/link";
+import { useEffect, useRef, useState } from "react";
+import type { Cafe } from "@/lib/types";
+import { cn } from "@/lib/cn";
+import { formatZagrebDayTimeLabel } from "@/lib/format";
+import { suggestions, type SuggestionId } from "@/lib/intent";
+import ChatMessage, { type ChatMessageData } from "./ChatMessage";
+import { SunGlyph } from "@/components/SunGlyph";
 
 type SpeechRecognitionResult = {
-  isFinal: boolean
-  0: { transcript: string }
-}
+  isFinal: boolean;
+  0: { transcript: string };
+};
 
 type SpeechRecognitionLike = {
-  continuous: boolean
-  interimResults: boolean
-  lang: string
-  start: () => void
-  stop: () => void
-  abort: () => void
-  onstart: (() => void) | null
-  onend: (() => void) | null
-  onerror: ((event: { error: string }) => void) | null
+  continuous: boolean;
+  interimResults: boolean;
+  lang: string;
+  start: () => void;
+  stop: () => void;
+  abort: () => void;
+  onstart: (() => void) | null;
+  onend: (() => void) | null;
+  onerror: ((event: { error: string }) => void) | null;
   onresult:
     | ((event: {
-        resultIndex: number
-        results: ArrayLike<SpeechRecognitionResult>
+        resultIndex: number;
+        results: ArrayLike<SpeechRecognitionResult>;
       }) => void)
-    | null
-}
+    | null;
+};
 
-type SpeechRecognitionCtor = new () => SpeechRecognitionLike
+type SpeechRecognitionCtor = new () => SpeechRecognitionLike;
 
 declare global {
   interface Window {
-    SpeechRecognition?: SpeechRecognitionCtor
-    webkitSpeechRecognition?: SpeechRecognitionCtor
+    SpeechRecognition?: SpeechRecognitionCtor;
+    webkitSpeechRecognition?: SpeechRecognitionCtor;
   }
 }
 
 type WeatherReport = {
-  temperatureC: number
-  feelsLikeC: number
-  windKmh: number
-  condition: string
-}
+  temperatureC: number;
+  feelsLikeC: number;
+  windKmh: number;
+  condition: string;
+};
+
+type SendOptions = {
+  fromVoiceInput?: boolean;
+};
+
+const TEXTAREA_MAX_HEIGHT_PX = 128;
 
 const weatherLabelFromCode = (code: number): string => {
-  if (code === 0) return "Clear sky"
-  if ([1, 2].includes(code)) return "Partly cloudy"
-  if (code === 3) return "Overcast"
-  if ([45, 48].includes(code)) return "Foggy"
-  if ([51, 53, 55, 56, 57].includes(code)) return "Drizzle"
-  if ([61, 63, 65, 66, 67, 80, 81, 82].includes(code)) return "Rain"
-  if ([71, 73, 75, 77, 85, 86].includes(code)) return "Snow"
-  if ([95, 96, 99].includes(code)) return "Thunderstorm"
-  return "Variable conditions"
-}
-
-/** ~4 lines; grows until this, then scrolls inside the field */
-const TEXTAREA_MAX_HEIGHT_PX = 128
+  if (code === 0) return "Clear sky";
+  if ([1, 2].includes(code)) return "Partly cloudy";
+  if (code === 3) return "Overcast";
+  if ([45, 48].includes(code)) return "Foggy";
+  if ([51, 53, 55, 56, 57].includes(code)) return "Drizzle";
+  if ([61, 63, 65, 66, 67, 80, 81, 82].includes(code)) return "Rain";
+  if ([71, 73, 75, 77, 85, 86].includes(code)) return "Snow";
+  if ([95, 96, 99].includes(code)) return "Thunderstorm";
+  return "Variable conditions";
+};
 
 type Props = {
-  messages: ChatMessageData[]
-  busy: boolean
-  showSuggestions: boolean
-  className?: string
-  focused?: boolean
-  onSend: (text: string) => void
-  onSuggestion: (id: SuggestionId) => void
-  onStreamComplete: (messageId: string) => void
-  onCafeSelect: (cafe: Cafe) => void
+  messages: ChatMessageData[];
+  busy: boolean;
+  showSuggestions: boolean;
+  className?: string;
+  focused?: boolean;
+  onSend: (text: string, options?: SendOptions) => void;
+  onSuggestion: (id: SuggestionId) => void;
+  onStreamComplete: (messageId: string) => void;
+  onCafeSelect: (cafe: Cafe) => void;
   /** Updates map shadow simulator to match a timeline sample (café result cards). */
-  onShadeSampleTime?: (time: Date) => void
-  onOpenPreferences: () => void
-}
+  onShadeSampleTime?: (time: Date) => void;
+  onOpenPreferences: () => void;
+  onPrimeVoicePlayback?: () => void | Promise<void>;
+};
 
 const ChatPanel = ({
   messages,
@@ -90,70 +94,71 @@ const ChatPanel = ({
   onStreamComplete,
   onCafeSelect,
   onShadeSampleTime,
-  onOpenPreferences
+  onOpenPreferences,
+  onPrimeVoicePlayback,
 }: Props) => {
-  const { userId } = useAuth()
-  const [draft, setDraft] = useState("")
-  const [speechError, setSpeechError] = useState<string | null>(null)
-  const [listening, setListening] = useState(false)
-  const [now, setNow] = useState(() => new Date())
-  const [weather, setWeather] = useState<WeatherReport | null>(null)
-  const [weatherStatus, setWeatherStatus] = useState<"loading" | "ready" | "error">(
-    "loading"
-  )
-  const scrollerRef = useRef<HTMLDivElement>(null)
-  const textareaRef = useRef<HTMLTextAreaElement>(null)
-  const recognitionRef = useRef<SpeechRecognitionLike | null>(null)
+  const { userId } = useAuth();
+  const [draft, setDraft] = useState("");
+  const [speechError, setSpeechError] = useState<string | null>(null);
+  const [listening, setListening] = useState(false);
+  const [now, setNow] = useState(() => new Date());
+  const [weather, setWeather] = useState<WeatherReport | null>(null);
+  const [weatherStatus, setWeatherStatus] = useState<
+    "loading" | "ready" | "error"
+  >("loading");
+  const scrollerRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
 
   useEffect(() => {
-    const el = textareaRef.current
-    if (!el) return
-    el.style.height = "0px"
-    const contentHeight = el.scrollHeight
+    const el = textareaRef.current;
+    if (!el) return;
+    el.style.height = "0px";
+    const contentHeight = el.scrollHeight;
     if (contentHeight <= TEXTAREA_MAX_HEIGHT_PX) {
-      el.style.height = `${contentHeight}px`
-      el.style.overflowY = "hidden"
+      el.style.height = `${contentHeight}px`;
+      el.style.overflowY = "hidden";
     } else {
-      el.style.height = `${TEXTAREA_MAX_HEIGHT_PX}px`
-      el.style.overflowY = "auto"
+      el.style.height = `${TEXTAREA_MAX_HEIGHT_PX}px`;
+      el.style.overflowY = "auto";
     }
-  }, [draft, busy, listening])
+  }, [draft, busy, listening]);
 
   useEffect(() => {
-    const el = scrollerRef.current
-    if (!el) return
-    el.scrollTo({ top: el.scrollHeight, behavior: "smooth" })
-  }, [messages, busy])
+    const el = scrollerRef.current;
+    if (!el) return;
+    el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
+  }, [messages, busy]);
 
   useEffect(() => {
     const timer = window.setInterval(() => {
-      setNow(new Date())
-    }, 30000)
-    return () => window.clearInterval(timer)
-  }, [])
+      setNow(new Date());
+    }, 30000);
+    return () => window.clearInterval(timer);
+  }, []);
 
   useEffect(() => {
-    let cancelled = false
+    let cancelled = false;
 
     const loadWeather = async () => {
       try {
-        setWeatherStatus("loading")
+        setWeatherStatus("loading");
         const res = await fetch(
           "https://api.open-meteo.com/v1/forecast?latitude=43.5081&longitude=16.4402&current=temperature_2m,apparent_temperature,weather_code,wind_speed_10m&timezone=auto",
-          { cache: "no-store" }
-        )
-        if (!res.ok) throw new Error("weather_unavailable")
+          { cache: "no-store" },
+        );
+        if (!res.ok) throw new Error("weather_unavailable");
 
         const data = (await res.json()) as {
           current?: {
-            temperature_2m?: number
-            apparent_temperature?: number
-            weather_code?: number
-            wind_speed_10m?: number
-          }
-        }
+            temperature_2m?: number;
+            apparent_temperature?: number;
+            weather_code?: number;
+            wind_speed_10m?: number;
+          };
+        };
 
-        const current = data.current
+        const current = data.current;
         if (
           !current ||
           current.temperature_2m === undefined ||
@@ -161,7 +166,7 @@ const ChatPanel = ({
           current.weather_code === undefined ||
           current.wind_speed_10m === undefined
         ) {
-          throw new Error("weather_payload_invalid")
+          throw new Error("weather_payload_invalid");
         }
 
         if (!cancelled) {
@@ -169,120 +174,125 @@ const ChatPanel = ({
             temperatureC: current.temperature_2m,
             feelsLikeC: current.apparent_temperature,
             windKmh: current.wind_speed_10m,
-            condition: weatherLabelFromCode(current.weather_code)
-          })
-          setWeatherStatus("ready")
+            condition: weatherLabelFromCode(current.weather_code),
+          });
+          setWeatherStatus("ready");
         }
       } catch {
         if (!cancelled) {
-          setWeatherStatus("error")
+          setWeatherStatus("error");
         }
       }
-    }
+    };
 
-    void loadWeather()
-    const refreshTimer = window.setInterval(() => {
-      void loadWeather()
-    }, 10 * 60 * 1000)
+    void loadWeather();
+    const refreshTimer = window.setInterval(
+      () => {
+        void loadWeather();
+      },
+      10 * 60 * 1000,
+    );
 
     return () => {
-      cancelled = true
-      window.clearInterval(refreshTimer)
-    }
-  }, [])
+      cancelled = true;
+      window.clearInterval(refreshTimer);
+    };
+  }, []);
 
-  const dayTimeLabel = formatZagrebDayTimeLabel(now)
+  const dayTimeLabel = formatZagrebDayTimeLabel(now);
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault()
-    const trimmed = draft.trim()
-    if (!trimmed || busy) return
-    setDraft("")
-    onSend(trimmed)
-  }
+    e.preventDefault();
+    const trimmed = draft.trim();
+    if (!trimmed || busy) return;
+    setDraft("");
+    onSend(trimmed);
+  };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault()
-      const trimmed = draft.trim()
-      if (!trimmed || busy) return
-      setDraft("")
-      onSend(trimmed)
+      e.preventDefault();
+      const trimmed = draft.trim();
+      if (!trimmed || busy) return;
+      setDraft("");
+      onSend(trimmed);
     }
-  }
+  };
 
   const handleSpeechClick = () => {
-    if (busy) return
+    if (busy) return;
 
-    const existing = recognitionRef.current
+    const existing = recognitionRef.current;
     if (existing && listening) {
-      existing.stop()
-      return
+      existing.stop();
+      return;
     }
 
     const SpeechRecognition =
-      window.SpeechRecognition ?? window.webkitSpeechRecognition
+      window.SpeechRecognition ?? window.webkitSpeechRecognition;
 
     if (!SpeechRecognition) {
-      setSpeechError("Speech input is not supported in this browser.")
-      return
+      setSpeechError("Speech input is not supported in this browser.");
+      return;
     }
 
-    const recognition = new SpeechRecognition()
-    recognitionRef.current = recognition
-    recognition.continuous = false
-    recognition.interimResults = true
-    recognition.lang = "en-US"
+    void onPrimeVoicePlayback?.();
+
+    const recognition = new SpeechRecognition();
+    recognitionRef.current = recognition;
+    recognition.continuous = false;
+    recognition.interimResults = true;
+    recognition.lang = "en-US";
 
     recognition.onstart = () => {
-      setListening(true)
-      setSpeechError(null)
-    }
+      setListening(true);
+      setSpeechError(null);
+    };
 
     recognition.onend = () => {
-      setListening(false)
-      recognitionRef.current = null
-    }
+      setListening(false);
+      recognitionRef.current = null;
+    };
 
     recognition.onerror = (event) => {
-      setListening(false)
-      recognitionRef.current = null
+      setListening(false);
+      recognitionRef.current = null;
       setSpeechError(
         event.error === "not-allowed"
           ? "Microphone access was blocked."
-          : "Speech input stopped. Try again."
-      )
-    }
+          : "Speech input stopped. Try again.",
+      );
+    };
 
     recognition.onresult = (event) => {
-      let interimTranscript = ""
-      let finalTranscript = ""
+      let interimTranscript = "";
+      let finalTranscript = "";
 
       for (let i = event.resultIndex; i < event.results.length; i += 1) {
-        const result = event.results[i]
-        const transcript = result[0].transcript
+        const result = event.results[i];
+        const transcript = result[0].transcript;
         if (result.isFinal) {
-          finalTranscript += transcript
+          finalTranscript += transcript;
         } else {
-          interimTranscript += transcript
+          interimTranscript += transcript;
         }
       }
 
-      const nextDraft = (finalTranscript || interimTranscript).trim()
+      const nextDraft = (finalTranscript || interimTranscript).trim();
       if (nextDraft) {
-        setDraft(nextDraft)
+        setDraft(nextDraft);
       }
 
-      const final = finalTranscript.trim()
+      const final = finalTranscript.trim();
       if (final) {
-        setDraft("")
-        recognition.stop()
-        onSend(final)
+        setDraft("");
+        recognition.stop();
+        onSend(final, { fromVoiceInput: true });
       }
-    }
+    };
 
-    recognition.start()
-  }
+    recognition.start();
+  };
 
   return (
     <section
@@ -293,7 +303,7 @@ const ChatPanel = ({
         focused
           ? "overflow-hidden border border-terracotta/25 shadow-[0_32px_100px_-56px_rgba(14,42,61,0.65)]"
           : "border-r border-ink/10",
-        className
+        className,
       )}
     >
       <Header
@@ -359,7 +369,7 @@ const ChatPanel = ({
               className={cn(
                 "group cursor-pointer rounded-full border border-terracotta/40 bg-bone-soft px-3.5 py-2 text-[12.5px] leading-tight text-ink",
                 "transition-all hover:-translate-y-0.5 hover:border-terracotta hover:bg-bone-deep",
-                "disabled:cursor-not-allowed disabled:opacity-50"
+                "disabled:cursor-not-allowed disabled:opacity-50",
               )}
             >
               <span className="font-mono text-[10px] uppercase tracking-[0.16em] text-terracotta-deep">
@@ -402,7 +412,7 @@ const ChatPanel = ({
             aria-label="Where and when, sun or shade"
             className={cn(
               "min-h-[44px] max-h-32 flex-1 resize-none bg-transparent py-2.5 text-[15px] leading-5 text-ink outline-none placeholder:text-ink/35",
-              "disabled:opacity-60"
+              "disabled:opacity-60",
             )}
           />
           <button
@@ -416,7 +426,7 @@ const ChatPanel = ({
               listening
                 ? "border-terracotta bg-terracotta text-bone shadow-[0_0_0_6px_rgba(199,107,69,0.12)]"
                 : "border-ink/35 hover:border-terracotta hover:text-terracotta",
-              "disabled:cursor-not-allowed disabled:border-ink/20 disabled:text-ink/25"
+              "disabled:cursor-not-allowed disabled:border-ink/20 disabled:text-ink/25",
             )}
           >
             <MicIcon active={listening} />
@@ -428,7 +438,7 @@ const ChatPanel = ({
             className={cn(
               "inline-flex h-10 shrink-0 cursor-pointer items-center justify-center rounded-full border border-ink px-5 text-[12.5px] font-medium uppercase tracking-[0.16em] text-ink",
               "transition-all hover:bg-ink hover:text-bone",
-              "disabled:cursor-not-allowed disabled:border-ink/30 disabled:text-ink/30 disabled:hover:bg-transparent"
+              "disabled:cursor-not-allowed disabled:border-ink/30 disabled:text-ink/30 disabled:hover:bg-transparent",
             )}
           >
             ask
@@ -441,21 +451,21 @@ const ChatPanel = ({
         )}
       </form>
     </section>
-  )
-}
+  );
+};
 
 const Header = ({
   dayTimeLabel,
   signedIn,
   weather,
   weatherStatus,
-  onOpenPreferences
+  onOpenPreferences,
 }: {
-  dayTimeLabel: string
-  signedIn: boolean
-  weather: WeatherReport | null
-  weatherStatus: "loading" | "ready" | "error"
-  onOpenPreferences: () => void
+  dayTimeLabel: string;
+  signedIn: boolean;
+  weather: WeatherReport | null;
+  weatherStatus: "loading" | "ready" | "error";
+  onOpenPreferences: () => void;
 }) => (
   <header className="relative z-[2] px-4 pb-2 pt-5 sm:px-7 sm:pb-3 sm:pt-7 lg:px-10">
     <p className="font-mono text-[9px] uppercase tracking-[0.28em] text-terracotta-deep sm:text-[10px] sm:tracking-[0.32em]">
@@ -490,7 +500,9 @@ const Header = ({
         className="mt-2 flex max-w-full flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] leading-snug text-ink/62"
         aria-live="polite"
       >
-        <span className="font-medium text-ink">{Math.round(weather.temperatureC)}°C</span>
+        <span className="font-medium text-ink">
+          {Math.round(weather.temperatureC)}°C
+        </span>
         <span className="text-ink/32" aria-hidden>
           ·
         </span>
@@ -508,7 +520,7 @@ const Header = ({
       <p className="mt-2 text-[11px] text-ink/45">Loading weather in Split…</p>
     ) : null}
   </header>
-)
+);
 
 const MicIcon = ({ active }: { active: boolean }) => (
   <svg
@@ -528,10 +540,8 @@ const MicIcon = ({ active }: { active: boolean }) => (
       strokeWidth="1.7"
       strokeLinecap="round"
     />
-    {active && (
-      <circle cx="18.5" cy="5.5" r="2" fill="currentColor" />
-    )}
+    {active && <circle cx="18.5" cy="5.5" r="2" fill="currentColor" />}
   </svg>
-)
+);
 
-export default ChatPanel
+export default ChatPanel;

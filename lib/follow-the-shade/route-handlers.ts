@@ -11,7 +11,7 @@ const SPEECH_CONTEXT_TERMS = [
   "sunny terrace",
   "outdoor seating",
 ];
-const BACKEND_PROXY_TIMEOUT_MS = 8_000;
+const BACKEND_PROXY_TIMEOUT_MS = 30_000;
 
 export async function handleFinalAnswer(
   request: Request,
@@ -177,11 +177,13 @@ async function proxyToBackend(
     headers.Authorization = `Bearer ${process.env.FOLLOW_THE_SHADE_API_TOKEN}`;
   }
 
-  const httpMethod =
-    method ?? (body === undefined ? "GET" : "POST");
+  const httpMethod = method ?? (body === undefined ? "GET" : "POST");
 
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), BACKEND_PROXY_TIMEOUT_MS);
+  const timeout = setTimeout(
+    () => controller.abort(),
+    BACKEND_PROXY_TIMEOUT_MS,
+  );
   let upstream: Response;
   try {
     upstream = await fetch(`${baseUrl.replace(/\/$/, "")}${path}`, {
@@ -214,7 +216,8 @@ async function proxyToBackend(
   return new Response(text, {
     status: upstream.status,
     headers: {
-      "Content-Type": upstream.headers.get("Content-Type") ?? "application/json",
+      "Content-Type":
+        upstream.headers.get("Content-Type") ?? "application/json",
     },
   });
 }
@@ -235,11 +238,14 @@ async function proxyToBackendBinaryGet(
     headers.Authorization = `Bearer ${process.env.FOLLOW_THE_SHADE_API_TOKEN}`;
   }
 
-  const upstream = await fetch(`${baseUrl.replace(/\/$/, "")}${pathWithQuery}`, {
-    method: "GET",
-    headers,
-    cache: "no-store",
-  });
+  const upstream = await fetch(
+    `${baseUrl.replace(/\/$/, "")}${pathWithQuery}`,
+    {
+      method: "GET",
+      headers,
+      cache: "no-store",
+    },
+  );
 
   const body = await upstream.arrayBuffer();
   const outHeaders = new Headers();
@@ -254,6 +260,6 @@ async function proxyToBackendBinaryGet(
 
   return new Response(body, {
     status: upstream.status,
-    headers: outHeaders
+    headers: outHeaders,
   });
 }
