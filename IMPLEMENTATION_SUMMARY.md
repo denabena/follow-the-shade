@@ -18,6 +18,7 @@ As of merge commit `4dbde8d` on `main`:
 - Read the project instructions in `AGENTS.md`.
 - Read `Backend_Chatbot_And_API_Integrations.md`.
 - Read the local Next 16 docs under `node_modules/next/dist/docs/` before adding route handlers.
+- Checked the Overpass API manual for bbox ordering, JSON output, timeout/resource behavior, and relation geometry caveats.
 - Copied/adapted backend structure and chat shell patterns from:
 
 ```text
@@ -138,8 +139,9 @@ Implemented behavior:
   - uses seed `patterns` as exposure samples
   - returns mocked building/weather notes so the frontend can develop deterministically
 - In `actual` mode:
-  - fetches cafe candidates from Google Places when configured
-  - fetches building footprints and outdoor seating from Overpass
+  - fetches cafe candidates from Google Places when configured, preferring `GOOGLE_PLACES_API_KEY` and falling back to `GOOGLE_MAPS_API_KEY`
+  - tries Google Places API New first, then falls back to legacy Nearby Search when the key is not enabled for Places API New
+  - fetches building footprints and outdoor seating from Overpass using a docs-aligned bbox query, request-method fallbacks, and public mirror fallbacks
   - fetches cloud cover / precipitation context from Open-Meteo
   - computes direct sun/shade samples with Astral, Shapely, and `pyproj`
 - Ranks cafes by a blend of exposure match, locality, and rating.
@@ -372,13 +374,14 @@ FOLLOW_THE_SHADE_API_BASE_URL=http://127.0.0.1:8001
 Python:
 
 ```bash
-uv run pytest
+.venv\Scripts\python.exe -m pytest
 ```
 
 Result:
 
 - `uv lock` completed successfully without changing `uv.lock`.
-- 7 tests passed.
+- 11 tests passed.
+- Provider-focused tests cover Google Places New-to-legacy fallback and Overpass request/query fallback behavior.
 
 Frontend:
 
@@ -400,14 +403,17 @@ Manual backend checks:
 - `GET /chat/analysis/{analysis_id}` returns the saved payload.
 - Outside-Split request redirects back to Split.
 - Missing-time request asks a clarification.
+- Live provider smoke check: Google Places returned 3 cafes via legacy fallback after Places API New returned `PERMISSION_DENIED`.
+- Live provider smoke check: Overpass returned 200 parsed building footprints through the patched client path after retrying public endpoints.
 
 ## Known Current Limitations
 
 - `mock` mode is still seed/pattern-backed by design; it does not use live geometry or live weather.
 - `actual` mode now uses real geometric shadow analysis, but the result quality still depends heavily on OSM building completeness and terrace-point estimates.
-- Google Places Nearby Search is integrated, but outdoor seating evidence and open-for-window handling are still coarse.
+- Google Places Nearby Search is integrated with API New-to-legacy fallback, but outdoor seating evidence and open-for-window handling are still coarse.
 - There is still no OSM cafe fallback when Google Places returns poor or empty candidate sets.
-- Overpass building coverage is usable for MVP shading, but relation-heavy/malformed footprint cases still need hardening.
+- Overpass building coverage is usable for MVP shading, but public endpoints can still be slow or intermittently unavailable; actual mode must keep seed fallbacks.
+- Relation-based building footprints are intentionally skipped for now because they can return unexpectedly large geometry and the current parser consumes way polygons only.
 - Building heights are often estimated from levels or default values, which lowers confidence.
 - Cafe terrace coordinates are estimates from `assets/split_cafe_seed.json`.
 - Opening hours are still assumed true for most MVP results; window-level open filtering is not enforced yet.
@@ -424,10 +430,10 @@ Manual backend checks:
 Highest priority backend tasks:
 
 - Add OSM/Overpass fallback cafe search.
-- Harden Google Places normalization and add tests for partial/malformed responses.
+- Add tests for partial/malformed Google Places responses beyond the current API New-to-legacy fallback coverage.
 - Improve `is_open_for_window` logic instead of assuming `True` for most results.
 - Improve terrace-point resolution when no explicit outdoor seating node is available.
-- Harden Overpass footprint parsing and confidence handling for missing/malformed relations.
+- Consider relation parsing only if we can bound geometry output and preserve fast fallback behavior.
 - Tune ranking and source-note wording when building heights are estimated or geometry is sparse.
 - Persist richer `AnalysisRecord` metadata for reload/deep-link flows.
 - Consider exposing backend progress if we want the analysis overlay to reflect real processing steps.
@@ -487,7 +493,7 @@ Highest priority backend tasks:
   - `Somewhere near Marmontova that is shaded this Saturday afternoon.`
 - Rehearse those three queries in both `mock` mode and `actual` mode.
 - Keep 8 to 12 high-confidence seed terrace points in Split as the fallback runbook.
-- Add a fallback mode that keeps the demo working if Google/Overpass fail.
+- Keep the existing fallback mode exercised so the demo still works if Google/Overpass fail.
 - Verify the map/token setup on the demo machine before recording.
 - Keep the walkthrough under 60 seconds.
 - Freeze after submission except for critical bug fixes.
@@ -496,10 +502,10 @@ Highest priority backend tasks:
 
 Add backend tests for:
 
-- Google Places normalization.
+- More Google Places normalization edge cases.
 - Mock mode seed-pattern exposure and `source_notes` behavior.
 - OSM building height parsing.
-- Overpass outdoor seating fallback and relation parsing.
+- Overpass outdoor seating fallback and public-endpoint failure handling.
 - Synthetic shadow geometry.
 - Weather fetch normalization.
 - `map_payload` contract stability.
