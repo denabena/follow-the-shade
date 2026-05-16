@@ -24,6 +24,7 @@ from services.follow_the_shade.data_sources import (
 )
 from services.geodata.overpass_client import OverpassClient
 from services.places.google_places import GooglePlacesClient
+from services.places.photo_token import place_photo_p_from_cafe
 from services.shadow.shadow_engine import (
     ExposureResult,
     ExposureSample,
@@ -398,6 +399,7 @@ class FollowTheShadePipeline:
             "terrace_point": {"lat": terrace["lat"], "lng": terrace["lng"]},
             "address": cafe.get("address"),
             "google_maps_uri": cafe.get("google_maps_uri"),
+            "place_photo_p": place_photo_p_from_cafe(cafe),
             "rating": cafe.get("rating"),
             "user_rating_count": cafe.get("user_rating_count"),
             "is_open_for_window": cafe.get("is_open_for_window", True),
@@ -493,6 +495,7 @@ class FollowTheShadePipeline:
                         "outdoor_seating_confidence", "high"
                     ),
                     "google_maps_uri": entry.get("google_maps_uri"),
+                    "place_photo_p": entry.get("place_photo_p"),
                     "patterns": entry.get("patterns", {}),
                 }
             )

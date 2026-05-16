@@ -27,6 +27,7 @@ export type MapPayloadResult = {
   terrace_point: LatLng;
   address: string;
   google_maps_uri?: string;
+  place_photo_p?: string;
   rating?: number;
   user_rating_count?: number;
   is_open_for_window: boolean;

@@ -95,6 +95,23 @@ export async function proxyMePreferences(
   return proxyToBackend("/me/preferences", undefined, bearerToken, "GET");
 }
 
+export async function handlePlacePhoto(
+  request: Request,
+  bearerToken?: string | null,
+): Promise<Response> {
+  if (!shouldProxyToBackend()) {
+    return backendNotConfigured();
+  }
+  const p = new URL(request.url).searchParams.get("p");
+  if (!p?.trim()) {
+    return Response.json({ error: "missing_p" }, { status: 400 });
+  }
+  return proxyToBackendBinaryGet(
+    `/places/photo?p=${encodeURIComponent(p)}`,
+    bearerToken,
+  );
+}
+
 function shouldProxyToBackend(): boolean {
   return Boolean(process.env.FOLLOW_THE_SHADE_API_BASE_URL);
 }
@@ -149,5 +166,44 @@ async function proxyToBackend(
     headers: {
       "Content-Type": upstream.headers.get("Content-Type") ?? "application/json",
     },
+  });
+}
+
+async function proxyToBackendBinaryGet(
+  pathWithQuery: string,
+  bearerToken?: string | null,
+): Promise<Response> {
+  const baseUrl = process.env.FOLLOW_THE_SHADE_API_BASE_URL;
+  if (!baseUrl) {
+    return Response.json({ error: "backend_url_missing" }, { status: 500 });
+  }
+
+  const headers: HeadersInit = {};
+  if (bearerToken) {
+    headers.Authorization = `Bearer ${bearerToken}`;
+  } else if (process.env.FOLLOW_THE_SHADE_API_TOKEN) {
+    headers.Authorization = `Bearer ${process.env.FOLLOW_THE_SHADE_API_TOKEN}`;
+  }
+
+  const upstream = await fetch(`${baseUrl.replace(/\/$/, "")}${pathWithQuery}`, {
+    method: "GET",
+    headers,
+    cache: "no-store",
+  });
+
+  const body = await upstream.arrayBuffer();
+  const outHeaders = new Headers();
+  const ct = upstream.headers.get("Content-Type");
+  if (ct) {
+    outHeaders.set("Content-Type", ct);
+  }
+  const cc = upstream.headers.get("Cache-Control");
+  if (cc) {
+    outHeaders.set("Cache-Control", cc);
+  }
+
+  return new Response(body, {
+    status: upstream.status,
+    headers: outHeaders
   });
 }

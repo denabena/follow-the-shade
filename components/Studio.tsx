@@ -1,7 +1,8 @@
 "use client";
 
 import Image from "next/image";
-import { useCallback, useRef, useState } from "react";
+import { Suspense, useCallback, useEffect, useRef, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import type { Cafe, IntentRequest } from "@/lib/types";
 import { suggestions, type SuggestionId } from "@/lib/intent";
 import { greet } from "@/lib/conversation";
@@ -12,6 +13,7 @@ import {
 } from "@/lib/map-payload-adapter";
 import backgroundImage from "@/assets/background.png";
 import ChatPanel from "./ChatPanel";
+import PreferencesModal from "./PreferencesModal";
 import MapPanel, { type MapPanelHandle } from "./MapPanel";
 import type { ChatMessageData } from "./ChatMessage";
 
@@ -23,15 +25,33 @@ type Phase =
 const newId = () =>
   `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
 
-const Studio = () => {
+const StudioContent = () => {
+  const searchParams = useSearchParams();
   const [messages, setMessages] = useState<ChatMessageData[]>([
     { id: newId(), role: "bot", text: greet(), streaming: true },
   ]);
   const [phase, setPhase] = useState<Phase>({ kind: "idle" });
   const [hasStarted, setHasStarted] = useState(false);
   const [threadId] = useState(() => createThreadId());
+  const [preferencesOpen, setPreferencesOpen] = useState(false);
 
   const mapRef = useRef<MapPanelHandle>(null);
+
+  useEffect(() => {
+    if (searchParams.get("prefs") !== "1") return;
+    const url = new URL(window.location.href);
+    url.searchParams.delete("prefs");
+    const q = url.searchParams.toString();
+    window.history.replaceState(
+      {},
+      "",
+      `${url.pathname}${q ? `?${q}` : ""}${url.hash}`,
+    );
+    const t = window.setTimeout(() => {
+      setPreferencesOpen(true);
+    }, 0);
+    return () => window.clearTimeout(t);
+  }, [searchParams]);
 
   const pushMessage = useCallback((m: ChatMessageData) => {
     setMessages((prev) => [...prev, m]);
@@ -177,7 +197,7 @@ const Studio = () => {
             "min-h-0 min-w-0 overflow-hidden transition-[transform,opacity] duration-700 ease-[cubic-bezier(0.2,0.8,0.2,1)]",
             mapActive
               ? "h-full translate-y-0 opacity-100"
-              : "absolute left-1/2 top-1/2 h-[min(920px,calc(100dvh-96px))] w-[min(980px,calc(100vw-48px))] -translate-x-1/2 -translate-y-1/2 animate-[fts-chat-enter_720ms_cubic-bezier(0.2,0.8,0.2,1)_both]",
+              : "absolute left-1/2 top-1/2 h-[min(920px,calc(100dvh-96px))] w-[min(980px,calc(100vw-48px))] -translate-x-1/2 -translate-y-1/2 rounded-[2rem] animate-[fts-chat-enter_720ms_cubic-bezier(0.2,0.8,0.2,1)_both]",
           ].join(" ")}
         >
           <ChatPanel
@@ -190,6 +210,7 @@ const Studio = () => {
             onSuggestion={handleSuggestion}
             onStreamComplete={handleStreamComplete}
             onCafeSelect={handleCafeSelect}
+            onOpenPreferences={() => setPreferencesOpen(true)}
           />
         </div>
         <div
@@ -207,8 +228,18 @@ const Studio = () => {
           />
         </div>
       </div>
+      <PreferencesModal
+        open={preferencesOpen}
+        onOpenChange={setPreferencesOpen}
+      />
     </div>
   );
 };
+
+const Studio = () => (
+  <Suspense fallback={null}>
+    <StudioContent />
+  </Suspense>
+);
 
 export default Studio;

@@ -7,6 +7,8 @@ export type Cafe = {
   blurb: string;
   lng: number;
   lat: number;
+  google_maps_uri?: string;
+  place_photo_p?: string;
 };
 
 export type SunPreference = "sun" | "shade" | "either";
