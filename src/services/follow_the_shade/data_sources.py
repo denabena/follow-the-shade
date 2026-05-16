@@ -40,13 +40,15 @@ class BuildingSummary:
 class WeatherSummary:
     cloud_cover_avg: int | None = None
     precipitation_probability_max: int | None = None
+    precipitation_mm_max: float | None = None
     source_notes: list[str] = field(default_factory=list)
     uncertainty_notes: list[str] = field(default_factory=list)
 
-    def to_result_weather(self) -> dict[str, int | None]:
+    def to_result_weather(self) -> dict[str, int | float | None]:
         return {
             "cloud_cover_avg": self.cloud_cover_avg,
             "precipitation_probability_max": self.precipitation_probability_max,
+            "precipitation_mm_max": self.precipitation_mm_max,
         }
 
 
@@ -334,8 +336,9 @@ class FollowTheShadeDataSources:
         )
         cloud_cover = weather.get("cloud_cover_avg")
         precipitation = weather.get("precipitation_probability_max")
+        precipitation_mm = weather.get("precipitation_mm_max")
 
-        if cloud_cover is None and precipitation is None:
+        if cloud_cover is None and precipitation is None and precipitation_mm is None:
             return WeatherSummary(
                 source_notes=[
                     "Open-Meteo returned no hourly weather samples for the requested window."
@@ -349,6 +352,9 @@ class FollowTheShadeDataSources:
             cloud_cover_avg=int(cloud_cover) if cloud_cover is not None else None,
             precipitation_probability_max=(
                 int(precipitation) if precipitation is not None else None
+            ),
+            precipitation_mm_max=(
+                float(precipitation_mm) if precipitation_mm is not None else None
             ),
             source_notes=["Weather context from Open-Meteo hourly forecast."],
         )

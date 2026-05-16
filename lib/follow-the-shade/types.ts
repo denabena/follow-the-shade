@@ -49,6 +49,7 @@ export type MapPayloadResult = {
   weather: {
     cloud_cover_avg: number | null;
     precipitation_probability_max: number | null;
+    precipitation_mm_max?: number | null;
   };
 };
 

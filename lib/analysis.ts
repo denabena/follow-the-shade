@@ -4,6 +4,7 @@ import type {
   Cafe,
   CafeResult,
   IntentRequest,
+  SunPreference,
   TimelinePoint
 } from "./types"
 import { formatRoughClock } from "./format"
@@ -51,7 +52,7 @@ export const buildTimeSteps = (intent: IntentRequest): Date[] => {
 const buildNuance = (
   timeline: TimelinePoint[],
   sunFraction: number,
-  preference: "sun" | "shade"
+  preference: SunPreference
 ): string => {
   if (timeline.length < 2) return ""
 
@@ -93,9 +94,13 @@ const buildHeadline = (sunFraction: number): string => {
 
 const matchesPreference = (
   sunFraction: number,
-  preference: "sun" | "shade"
+  preference: SunPreference
 ): boolean =>
-  preference === "sun" ? sunFraction >= 0.7 : sunFraction <= 0.3
+  preference === "sun"
+    ? sunFraction >= 0.7
+    : preference === "shade"
+      ? sunFraction <= 0.3
+      : true
 
 export type AnalysisArgs = {
   map: MapPanelHandle
