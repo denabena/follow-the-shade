@@ -7,7 +7,7 @@ import {
   useRef,
   useState
 } from "react"
-import type { Map as MapboxMap, Marker, StyleSpecification } from "mapbox-gl"
+import type { LightsSpecification, Map as MapboxMap, Marker } from "mapbox-gl"
 import type { Cafe, CafeResult, IntentArea } from "@/lib/types"
 import type { ShadeMapHandle } from "@/lib/shademap"
 import { createShadeMap } from "@/lib/shademap"
@@ -22,6 +22,7 @@ export type MapPanelHandle = {
   setResults: (results: CafeResult[], preference: "sun" | "shade" | "either") => void
   clearResults: () => void
   focusCafe: (cafe: Cafe) => void
+  resize: () => void
 }
 
 type MapStatus =
@@ -42,38 +43,28 @@ const SHADEMAP_KEY = process.env.NEXT_PUBLIC_SHADEMAP_API_KEY ?? ""
 
 const SPLIT_CENTER: [number, number] = [16.4402, 43.5081]
 
-const splitMapStyle: StyleSpecification = {
-  version: 8,
-  sources: {
-    osm: {
-      type: "raster",
-      tiles: [
-        "https://a.tile.openstreetmap.org/{z}/{x}/{y}.png",
-        "https://b.tile.openstreetmap.org/{z}/{x}/{y}.png",
-        "https://c.tile.openstreetmap.org/{z}/{x}/{y}.png"
-      ],
-      tileSize: 256,
-      attribution: "OpenStreetMap contributors"
-    },
-    composite: {
-      type: "vector",
-      url: "mapbox://mapbox.mapbox-streets-v8"
+const standardLights: LightsSpecification[] = [
+  {
+    id: "ambient_light",
+    type: "ambient",
+    properties: {
+      color: "rgba(255, 246, 226, 1)",
+      intensity: 0.36
     }
   },
-  layers: [
-    {
-      id: "osm-basemap",
-      type: "raster",
-      source: "osm",
-      paint: {
-        "raster-saturation": -0.28,
-        "raster-contrast": -0.08,
-        "raster-brightness-min": 0.05,
-        "raster-brightness-max": 0.92
-      }
+  {
+    id: "sun_light",
+    type: "directional",
+    properties: {
+      color: "rgba(255, 255, 255, 1)",
+      intensity: 0.58,
+      direction: [180, 80],
+      "cast-shadows": true,
+      "shadow-intensity": 0.9,
+      "shadow-quality": 1
     }
-  ]
-}
+  }
+]
 
 const makeMarkerEl = (
   cafe: Cafe,
@@ -101,6 +92,33 @@ const makeMarkerEl = (
   return wrapper
 }
 
+const hideAddressLabels = (map: MapboxMap) => {
+  map.getStyle().layers?.forEach((layer) => {
+    if (layer.type !== "symbol") return
+
+    const id = layer.id.toLowerCase()
+    const sourceLayer =
+      "source-layer" in layer
+        ? String(layer["source-layer"] ?? "").toLowerCase()
+        : ""
+
+    const looksLikeBuildingNumber =
+      id.includes("address") ||
+      id.includes("house") ||
+      id.includes("housenum") ||
+      id.includes("building-number") ||
+      sourceLayer.includes("address")
+
+    if (!looksLikeBuildingNumber) return
+
+    try {
+      map.setLayoutProperty(layer.id, "visibility", "none")
+    } catch {
+      // Mapbox Standard imports can expose read-only internals; ignore those.
+    }
+  })
+}
+
 const MapPanel = forwardRef<MapPanelHandle, Props>(function MapPanel(
   { onReady, onCafeClick },
   ref
@@ -110,6 +128,7 @@ const MapPanel = forwardRef<MapPanelHandle, Props>(function MapPanel(
   const shadeRef = useRef<ShadeMapHandle | null>(null)
   const markersRef = useRef<Marker[]>([])
   const onCafeClickRef = useRef(onCafeClick)
+  const [showLoadOverlay, setShowLoadOverlay] = useState(true)
   const [status, setStatus] = useState<MapStatus>(() =>
     MAPBOX_TOKEN ? "loading" : "no-token"
   )
@@ -132,10 +151,20 @@ const MapPanel = forwardRef<MapPanelHandle, Props>(function MapPanel(
 
       const map = new mapboxgl.Map({
         container: containerRef.current,
-        style: splitMapStyle,
+        style: "mapbox://styles/mapbox/standard",
+        config: {
+          basemap: {
+            lightPreset: "day",
+            showPointOfInterestLabels: false,
+            showRoadLabels: false,
+            showTransitLabels: false,
+            showPlaceLabels: false,
+            show3dObjects: true
+          }
+        },
         center: SPLIT_CENTER,
-        zoom: 15.4,
-        pitch: 45,
+        zoom: 16.1,
+        pitch: 52,
         bearing: -18,
         antialias: true,
         attributionControl: true
@@ -158,17 +187,20 @@ const MapPanel = forwardRef<MapPanelHandle, Props>(function MapPanel(
       const handleLoad = () => {
         if (cancelled) return
 
-        const labelLayer = map
-          .getStyle()
-          ?.layers?.find(
-            (l) => l.type === "symbol" && (l.layout as { [k: string]: unknown })?.["text-field"]
-          )
+        map.setLights(standardLights)
+        map.setLight({
+          position: [1.5, 180, 80],
+          color: "white",
+          intensity: 0.5
+        })
+        hideAddressLabels(map)
 
         map.addLayer(
           {
             id: "fts-3d-buildings",
             source: "composite",
             "source-layer": "building",
+            slot: "middle",
             filter: ["==", "extrude", "true"],
             type: "fill-extrusion",
             minzoom: 14,
@@ -178,11 +210,11 @@ const MapPanel = forwardRef<MapPanelHandle, Props>(function MapPanel(
                 ["linear"],
                 ["get", "height"],
                 0,
-                "#e9dcc3",
+                "#efc995",
                 25,
-                "#d8c4a4",
+                "#d6874f",
                 60,
-                "#c7a87f"
+                "#a85e32"
               ],
               "fill-extrusion-height": [
                 "interpolate",
@@ -202,14 +234,14 @@ const MapPanel = forwardRef<MapPanelHandle, Props>(function MapPanel(
                 15.05,
                 ["get", "min_height"]
               ],
-              "fill-extrusion-opacity": 0.85
+              "fill-extrusion-opacity": 0.92
             }
-          },
-          labelLayer?.id
+          }
         )
 
         setStatus("ready")
         onReady?.()
+        window.setTimeout(() => setShowLoadOverlay(false), 260)
 
         window.setTimeout(() => {
           if (!cancelled) {
@@ -268,10 +300,13 @@ const MapPanel = forwardRef<MapPanelHandle, Props>(function MapPanel(
             resolve()
             return
           }
+          map.resize()
+          window.setTimeout(() => map.resize(), 350)
+          window.setTimeout(() => map.resize(), 760)
           map.flyTo({
             center: area.center,
             zoom: area.zoom,
-            pitch: 50,
+            pitch: 56,
             bearing: -18,
             speed: 0.9,
             curve: 1.4,
@@ -335,13 +370,17 @@ const MapPanel = forwardRef<MapPanelHandle, Props>(function MapPanel(
         markersRef.current = []
       },
       focusCafe: (cafe) => {
+        mapRef.current?.resize()
         mapRef.current?.flyTo({
           center: [cafe.lng, cafe.lat],
           zoom: 18.2,
-          pitch: 55,
+          pitch: 60,
           speed: 1.1,
           essential: true
         })
+      },
+      resize: () => {
+        mapRef.current?.resize()
       }
     }),
     []
@@ -351,7 +390,7 @@ const MapPanel = forwardRef<MapPanelHandle, Props>(function MapPanel(
     <div className="relative h-full w-full overflow-hidden">
       <div ref={containerRef} className="absolute inset-0 z-0 h-full w-full" />
       <div className="pointer-events-none absolute inset-0 ring-1 ring-inset ring-terracotta/15" />
-      {status !== "ready" && <StatusOverlay status={status} />}
+      {showLoadOverlay && <StatusOverlay status={status} />}
     </div>
   )
 })
@@ -360,16 +399,22 @@ const StatusOverlay = ({ status }: { status: MapStatus }) => {
   const isLoading = status === "loading"
   const isMissing = status === "no-token" || status === "no-shademap-key"
   const isInvalid = status === "invalid-token"
+  const isReady = status === "ready"
   return (
     <div
       role="status"
       aria-live="polite"
       className={cn(
-        "absolute inset-0 z-10 flex items-center justify-center",
-        isLoading ? "bg-bone/30 backdrop-blur-[1px]" : "bg-bone/85 backdrop-blur"
+        "absolute inset-0 z-30 flex items-center justify-center bg-bone transition-opacity duration-200 ease-out will-change-opacity",
+        isReady ? "pointer-events-none opacity-0" : "opacity-100"
       )}
     >
-      <div className="grain relative max-w-md px-10 py-12 text-center">
+      <div
+        className={cn(
+          "grain relative max-w-md px-10 py-12 text-center transition-opacity duration-150 ease-out will-change-opacity",
+          isReady ? "opacity-0" : "opacity-100"
+        )}
+      >
         {isInvalid && (
           <>
             <p className="font-display text-3xl text-ink">

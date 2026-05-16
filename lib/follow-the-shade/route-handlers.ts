@@ -1,4 +1,3 @@
-import { buildDemoChatResponse, getAnalysis } from "./demo-backend";
 import type { ChatRequest } from "./types";
 
 const SPEECH_CONTEXT_TERMS = [
@@ -25,8 +24,7 @@ export async function handleFinalAnswer(request: Request): Promise<Response> {
     return proxyToBackend("/chat/final_answer", body);
   }
 
-  const response = await buildDemoChatResponse(body);
-  return Response.json(response);
+  return backendNotConfigured();
 }
 
 export async function handleAnalysis(
@@ -37,12 +35,7 @@ export async function handleAnalysis(
     return proxyToBackend(`/chat/analysis/${encodeURIComponent(analysisId)}`);
   }
 
-  const record = getAnalysis(analysisId);
-  if (!record) {
-    return Response.json({ error: "analysis_not_found" }, { status: 404 });
-  }
-
-  return Response.json(record);
+  return backendNotConfigured();
 }
 
 export async function handleSpeechKey(
@@ -65,7 +58,7 @@ export async function handleSpeechKey(
     {
       error: "speech_backend_not_configured",
       message:
-        "Temporary Soniox key generation belongs on the real backend. Set FOLLOW_THE_SHADE_API_BASE_URL and FOLLOW_THE_SHADE_USE_MOCK=false when that service is running.",
+        "Temporary Soniox key generation belongs on the real backend. Set FOLLOW_THE_SHADE_API_BASE_URL when that service is running.",
       context_terms: SPEECH_CONTEXT_TERMS,
     },
     { status: 501 },
@@ -73,9 +66,17 @@ export async function handleSpeechKey(
 }
 
 function shouldProxyToBackend(): boolean {
-  return Boolean(
-    process.env.FOLLOW_THE_SHADE_API_BASE_URL &&
-      process.env.FOLLOW_THE_SHADE_USE_MOCK !== "true",
+  return Boolean(process.env.FOLLOW_THE_SHADE_API_BASE_URL);
+}
+
+function backendNotConfigured(): Response {
+  return Response.json(
+    {
+      error: "backend_not_configured",
+      message:
+        "FOLLOW_THE_SHADE_API_BASE_URL is not set. The frontend no longer uses the demo parser; configure the FastAPI chat backend to prompt the agent.",
+    },
+    { status: 503 },
   );
 }
 

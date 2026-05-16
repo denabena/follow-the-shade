@@ -148,10 +148,6 @@ const Header = () => (
         Follow the Shade
       </h1>
     </div>
-    <p className="hidden max-w-[200px] text-right text-[11.5px] leading-snug text-ink/55 sm:block">
-      I check real building shadows for the hour you actually want to sit
-      outside.
-    </p>
   </header>
 )
 

@@ -43,12 +43,6 @@ const Studio = () => {
   const beginQuery = useCallback(
     async (userUtterance: string) => {
       pushMessage({ id: newId(), role: "user", text: userUtterance })
-      pushMessage({
-        id: newId(),
-        role: "bot",
-        text: "I’m checking the backend for Split cafes, terrace points, and the sun/shade samples for that window.",
-        streaming: true
-      })
       setPhase({ kind: "checking" })
       mapRef.current?.clearResults()
       mapRef.current?.setShadeOpacity(0)
@@ -93,7 +87,7 @@ const Studio = () => {
         pushMessage({
           id: newId(),
           role: "bot",
-          text: `I could not reach the backend chat endpoint (${detail}). Check FOLLOW_THE_SHADE_API_BASE_URL, FOLLOW_THE_SHADE_USE_MOCK, and the backend server.`,
+          text: `I could not reach the backend chat endpoint (${detail}). Check FOLLOW_THE_SHADE_API_BASE_URL and the backend server.`,
           streaming: true
         })
         setPhase({ kind: "idle" })

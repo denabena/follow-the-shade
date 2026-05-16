@@ -56,8 +56,8 @@ export const createShadeMap = async (
   const instance = new ShadeMapCtor({
     apiKey: options.apiKey,
     date: options.date,
-    color: "#0e2a3d",
-    opacity: 0,
+    color: "#07182a",
+    opacity: 0.55,
     terrainSource,
     getFeatures: async () => buildingsFromComposite(map)
   }).addTo(map)
