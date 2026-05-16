@@ -20,7 +20,11 @@ from app.api.chat.schemas import (
     SpeechTtsTemporaryKeyRequest,
     SpeechTtsTemporaryKeyResponse,
 )
-from app.api.chat.generate_answer import ChatFlowResult, run_chat_flow
+from app.api.chat.generate_answer import (
+    ChatFlowResult,
+    normalize_map_answer,
+    run_chat_flow,
+)
 from app.auth.deps import get_optional_user_id
 from app.state import AppState, get_state
 from core.config import settings
@@ -299,15 +303,21 @@ async def chat_final_answer(
     else:
         raise HTTPException(status_code=503, detail="Chat agent is not initialized.")
 
+    answer = normalize_map_answer(
+        result.answer,
+        result.map_payload,
+        result.detected_language,
+    )
+
     audio = None
     if chat_request.include_audio:
         audio = await _generate_soniox_tts(
-            answer=result.answer,
+            answer=answer,
             language=result.detected_language,
         )
 
     return ChatResponse(
-        answer=result.answer,
+        answer=answer,
         thread_id=chat_request.thread_id,
         analysis_id=result.analysis_id,
         map_payload=result.map_payload,

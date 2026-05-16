@@ -7,6 +7,7 @@ import { suggestions, type SuggestionId } from "@/lib/intent";
 import { greet } from "@/lib/conversation";
 import { createThreadId, sendFinalAnswer } from "@/lib/backend";
 import {
+  answerFromMapPayload,
   intentFromMapPayload,
   resultsFromMapPayload,
 } from "@/lib/map-payload-adapter";
@@ -82,7 +83,10 @@ const Studio = () => {
         pushMessage({
           id: newId(),
           role: "bot",
-          text: response.answer,
+          text: answerFromMapPayload(
+            response.map_payload,
+            response.detected_language,
+          ),
           streaming: true,
           intent,
           results: { items: results, intent },

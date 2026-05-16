@@ -16,63 +16,64 @@ import type {
 const seedCafes = seedCafeData as SeedCafe[];
 const ZAGREB_TIME_ZONE = "Europe/Zagreb";
 
-const SPLIT_AREAS: Array<{ label: string; aliases: string[]; center: LatLng }> = [
-  {
-    label: "Riva, Split",
-    aliases: ["riva", "old town", "central split", "center", "centre"],
-    center: { lat: 43.5081, lng: 16.4391 },
-  },
-  {
-    label: "Diocletian Palace, Split",
-    aliases: ["diocletian", "palace", "pjaca", "peristil"],
-    center: { lat: 43.5086, lng: 16.4409 },
-  },
-  {
-    label: "Marmontova, Split",
-    aliases: ["marmontova"],
-    center: { lat: 43.5102, lng: 16.4382 },
-  },
-  {
-    label: "Prokurative, Split",
-    aliases: ["prokurative", "trg republike"],
-    center: { lat: 43.5095, lng: 16.437 },
-  },
-  {
-    label: "Matejuska, Split",
-    aliases: ["matejuska", "matejuska"],
-    center: { lat: 43.5076, lng: 16.4355 },
-  },
-  {
-    label: "Varos, Split",
-    aliases: ["varos", "varos"],
-    center: { lat: 43.5094, lng: 16.4336 },
-  },
-  {
-    label: "Bacvice, Split",
-    aliases: ["bacvice", "bacvice beach"],
-    center: { lat: 43.5039, lng: 16.4514 },
-  },
-  {
-    label: "Firule, Split",
-    aliases: ["firule"],
-    center: { lat: 43.5019, lng: 16.4592 },
-  },
-  {
-    label: "Znjan, Split",
-    aliases: ["znjan"],
-    center: { lat: 43.5023, lng: 16.4865 },
-  },
-  {
-    label: "West Coast, Split",
-    aliases: ["west coast", "zapadna obala"],
-    center: { lat: 43.5063, lng: 16.4323 },
-  },
-  {
-    label: "Sustipan, Split",
-    aliases: ["sustipan"],
-    center: { lat: 43.5035, lng: 16.4223 },
-  },
-];
+const SPLIT_AREAS: Array<{ label: string; aliases: string[]; center: LatLng }> =
+  [
+    {
+      label: "Riva, Split",
+      aliases: ["riva", "old town", "central split", "center", "centre"],
+      center: { lat: 43.5081, lng: 16.4391 },
+    },
+    {
+      label: "Diocletian Palace, Split",
+      aliases: ["diocletian", "palace", "pjaca", "peristil"],
+      center: { lat: 43.5086, lng: 16.4409 },
+    },
+    {
+      label: "Marmontova, Split",
+      aliases: ["marmontova"],
+      center: { lat: 43.5102, lng: 16.4382 },
+    },
+    {
+      label: "Prokurative, Split",
+      aliases: ["prokurative", "trg republike"],
+      center: { lat: 43.5095, lng: 16.437 },
+    },
+    {
+      label: "Matejuska, Split",
+      aliases: ["matejuska", "matejuska"],
+      center: { lat: 43.5076, lng: 16.4355 },
+    },
+    {
+      label: "Varos, Split",
+      aliases: ["varos", "varos"],
+      center: { lat: 43.5094, lng: 16.4336 },
+    },
+    {
+      label: "Bacvice, Split",
+      aliases: ["bacvice", "bacvice beach"],
+      center: { lat: 43.5039, lng: 16.4514 },
+    },
+    {
+      label: "Firule, Split",
+      aliases: ["firule"],
+      center: { lat: 43.5019, lng: 16.4592 },
+    },
+    {
+      label: "Znjan, Split",
+      aliases: ["znjan"],
+      center: { lat: 43.5023, lng: 16.4865 },
+    },
+    {
+      label: "West Coast, Split",
+      aliases: ["west coast", "zapadna obala"],
+      center: { lat: 43.5063, lng: 16.4323 },
+    },
+    {
+      label: "Sustipan, Split",
+      aliases: ["sustipan"],
+      center: { lat: 43.5035, lng: 16.4223 },
+    },
+  ];
 
 const globalStore = globalThis as typeof globalThis & {
   followTheShadeAnalyses?: Map<string, AnalysisRecord>;
@@ -104,7 +105,8 @@ export async function buildDemoChatResponse(
 
   if (!message) {
     return {
-      answer: "Tell me where in Split you want to sit and what time window to check.",
+      answer:
+        "Tell me where in Split you want to sit and what time window to check.",
       thread_id: threadId,
       analysis_id: null,
       map_payload: null,
@@ -171,16 +173,18 @@ export async function buildDemoChatResponse(
   };
   analysisStore.set(analysisId, record);
 
-  const best = mapPayload.results.slice(0, 3);
   const timeLabel = `${shortTime(mapPayload.request.start)}-${shortTime(
     mapPayload.request.end,
   )}`;
+  const preferenceLabel =
+    preference === "either"
+      ? "outdoor"
+      : preference === "shade"
+        ? "shade-friendly"
+        : "sunny";
   const answer = [
-    `Best ${preference === "either" ? "outdoor" : preference} matches near ${
-      area.label
-    } for ${timeLabel}: ${best.map((result) => result.name).join(", ")}.`,
-    best[0]?.exposure.summary,
-    "This demo uses seeded terrace points and sample exposure patterns; the FastAPI backend will replace it with Google/OSM buildings, Astral/Shapely shadows, and Open-Meteo weather.",
+    `I found ${mapPayload.results.length} ${preferenceLabel} options near ${area.label} for ${timeLabel}.`,
+    "Terrace points and exposure patterns are demo estimates, so treat timing as approximate.",
   ]
     .filter(Boolean)
     .join(" ");
@@ -404,20 +408,33 @@ function findArea(query: string): { label: string; center: LatLng } {
 }
 
 function isOutsideSplit(query: string): boolean {
-  return /\b(zagreb|tkalciceva|tkalca|dubrovnik|zadar|rijeka|pula)\b/.test(query);
+  return /\b(zagreb|tkalciceva|tkalca|dubrovnik|zadar|rijeka|pula)\b/.test(
+    query,
+  );
 }
 
 function parseTimeWindow(
   query: string,
-): { start: string; end: string; period: "morning" | "lunch" | "afternoon" } | null {
+): {
+  start: string;
+  end: string;
+  period: "morning" | "lunch" | "afternoon";
+} | null {
   const date = parseDateLabel(query);
   const explicit = query.match(
     /(?:from\s*)?(\d{1,2})(?::(\d{2}))?\s*(am|pm)?\s*(?:-|to|until)\s*(\d{1,2})(?::(\d{2}))?\s*(am|pm)?/,
   );
 
   if (explicit) {
-    const [, rawStartHour, rawStartMinute, rawStartMeridiem, rawEndHour, rawEndMinute, rawEndMeridiem] =
-      explicit;
+    const [
+      ,
+      rawStartHour,
+      rawStartMinute,
+      rawStartMeridiem,
+      rawEndHour,
+      rawEndMinute,
+      rawEndMeridiem,
+    ] = explicit;
     const endMeridiem = rawEndMeridiem as "am" | "pm" | undefined;
     const startMeridiem =
       (rawStartMeridiem as "am" | "pm" | undefined) ?? endMeridiem;
@@ -425,7 +442,8 @@ function parseTimeWindow(
     const endHour = toHour24(Number(rawEndHour), endMeridiem);
     const startMinute = Number(rawStartMinute ?? "0");
     const endMinute = Number(rawEndMinute ?? "0");
-    const period = startHour < 12 ? "morning" : startHour < 14 ? "lunch" : "afternoon";
+    const period =
+      startHour < 12 ? "morning" : startHour < 14 ? "lunch" : "afternoon";
 
     return {
       start: localIso(date, startHour, startMinute),

@@ -248,16 +248,15 @@ class FollowTheShadePipeline:
         }
         self._remember_thread_context(thread_id, parsed)
 
-        best = ranked[:3]
-        names = ", ".join(r["name"] for r in best)
         preference_label = (
             "outdoor" if parsed.preference == "either" else parsed.preference
         )
         weather_note = _weather_answer_note(weather)
         answer = (
-            f"Best {preference_label} matches near {parsed.location_label} for "
-            f"{_short_time(parsed.start)}-{_short_time(parsed.end)}: {names}. "
-            f"{best[0]['exposure']['summary']}{weather_note}"
+            f"I found {len(ranked)} {preference_label} options near "
+            f"{parsed.location_label} for "
+            f"{_short_time(parsed.start)}-{_short_time(parsed.end)}."
+            f"{weather_note}"
         )
 
         return {
