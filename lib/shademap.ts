@@ -3,6 +3,9 @@ import type ShadeMap from "mapbox-gl-shadow-simulator"
 
 type ShadeMapInstance = InstanceType<typeof ShadeMap>
 
+/** Keep in sync with `createShadeMap` default overlay strength and Studio re-show after queries. */
+export const SHADE_MAP_OVERLAY_OPACITY = 0.55
+
 export type ShadeMapHandle = {
   instance: ShadeMapInstance
   setDateAndAwaitIdle: (d: Date) => Promise<void>
@@ -57,7 +60,7 @@ export const createShadeMap = async (
     apiKey: options.apiKey,
     date: options.date,
     color: "#07182a",
-    opacity: 0.55,
+    opacity: SHADE_MAP_OVERLAY_OPACITY,
     terrainSource,
     getFeatures: async () => buildingsFromComposite(map)
   }).addTo(map)

@@ -23,7 +23,7 @@ class Settings(BaseSettings):
     SONIOX_AUTH_BASE_URL: str = "https://api.soniox.com/v1"
     SONIOX_API_HOST_TTS: str = "https://tts-rt.soniox.com/tts"
     SONIOX_STT_MODEL: str = "stt-rt-v4"
-    SONIOX_STT_LANGUAGE_HINTS: str = "hr,en,it,de,sl,fr"
+    SONIOX_STT_LANGUAGE_HINTS: str = "en"
     SONIOX_STT_TEMP_KEY_EXPIRES_SECONDS: int = 300
     SONIOX_STT_MAX_ENDPOINT_DELAY_MS: int = 900
     SONIOX_TTS_MODEL: str = "tts-rt-v1"
@@ -35,6 +35,7 @@ class Settings(BaseSettings):
     SONIOX_TTS_TIMEOUT_SECONDS: float = 30.0
 
     SESSION_TTL_SECONDS: int = 24 * 60 * 60
+    AGENT_CONFIG_PATH: str = "agent_config.yaml"
     SPLIT_CAFE_SEED_PATH: str = "assets/split_cafe_seed.json"
     CHAT_MAX_INPUT_CHARS: int = 800
     FOLLOW_THE_SHADE_DATA_MODE: Literal["mock", "actual"] = "mock"

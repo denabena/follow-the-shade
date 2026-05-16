@@ -1,13 +1,6 @@
-from typing import Any, Literal
+from typing import Any
 
 from pydantic import BaseModel, Field, model_validator
-
-SupportedLanguageCode = Literal["hr", "en", "it", "de", "sl", "fr"]
-
-
-class StructuredChatAnswer(BaseModel):
-    response: str = Field(min_length=1)
-    detected_language: SupportedLanguageCode
 
 
 class ChatAudio(BaseModel):
@@ -42,7 +35,7 @@ class ChatResponse(BaseModel):
     review_configs: list[dict[str, Any]] | None = None
     sources: list[Any] = Field(default_factory=list)
     audio: ChatAudio | None = None
-    detected_language: SupportedLanguageCode | None = None
+    detected_language: str | None = None
 
 
 class AnalysisResponse(BaseModel):

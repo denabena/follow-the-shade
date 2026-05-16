@@ -22,11 +22,17 @@ type Props = {
   message: ChatMessageData
   onStreamComplete?: () => void
   onCafeSelect?: (cafe: Cafe) => void
+  onShadeSampleTime?: (time: Date) => void
 }
 
 const STREAM_MS_PER_CHAR = 12
 
-const ChatMessage = ({ message, onStreamComplete, onCafeSelect }: Props) => {
+const ChatMessage = ({
+  message,
+  onStreamComplete,
+  onCafeSelect,
+  onShadeSampleTime,
+}: Props) => {
   const { role, text, streaming } = message
   const isUser = role === "user"
   const isSystem = role === "system"
@@ -101,6 +107,7 @@ const ChatMessage = ({ message, onStreamComplete, onCafeSelect }: Props) => {
                   result={r}
                   intent={message.results!.intent}
                   onSelect={() => onCafeSelect?.(r.cafe)}
+                  onShadeSampleTime={onShadeSampleTime}
                 />
               ))}
             </div>

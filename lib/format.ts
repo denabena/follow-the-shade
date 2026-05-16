@@ -1,3 +1,13 @@
+/** Explicit locale + timezone so SSR and browser produce the same string (avoids hydration mismatch). */
+export const formatZagrebDayTimeLabel = (d: Date): string =>
+  new Intl.DateTimeFormat("en-GB", {
+    weekday: "long",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+    timeZone: "Europe/Zagreb",
+  }).format(d)
+
 export const formatClock = (d: Date): string => {
   const h = d.getHours().toString().padStart(2, "0")
   const m = d.getMinutes().toString().padStart(2, "0")

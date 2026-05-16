@@ -9,9 +9,10 @@ type Props = {
   result: CafeResult
   intent: IntentRequest
   onSelect: () => void
+  onShadeSampleTime?: (time: Date) => void
 }
 
-const CafeResultCard = ({ result, intent, onSelect }: Props) => {
+const CafeResultCard = ({ result, intent, onSelect, onShadeSampleTime }: Props) => {
   const { cafe, sunFraction, headline, nuance, matches, timeline } = result
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
@@ -69,6 +70,7 @@ const CafeResultCard = ({ result, intent, onSelect }: Props) => {
           timeline={timeline}
           windowStart={intent.windowStart}
           windowEnd={intent.windowEnd}
+          onSampleSelect={onShadeSampleTime}
         />
       </div>
 

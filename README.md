@@ -8,12 +8,12 @@ Follow the Shade is a Split-only outdoor cafe finder. Users ask naturally, for e
 Next.js frontend
 	-> POST /chat/final_answer
 	-> FastAPI backend
-	-> FollowTheShadeAgent
-	-> find_split_cafe_sun_shade composite tool
+  -> LangGraph Follow the Shade agent
+  -> find_split_cafe_sun_shade composite tool
 	-> map_payload + analysis_id
 ```
 
-The MVP keeps one agent and one deterministic tool. External APIs sit behind cache-aware source templates so frontend development can use mock data without paying for or waiting on real calls.
+The MVP keeps one LangGraph chat agent and one deterministic analysis tool. External APIs sit behind cache-aware source templates so frontend development can use mock data without paying for or waiting on real calls. Python chat requires `OPENAI_API_KEY`; the deterministic pipeline is exposed to the agent as a tool and is reused by scheduled notification digests.
 
 ## Modes
 
@@ -51,6 +51,7 @@ FOLLOW_THE_SHADE_API_BASE_URL=http://127.0.0.1:8000
 FOLLOW_THE_SHADE_DATA_MODE=actual
 FOLLOW_THE_SHADE_CACHE_TTL_SECONDS=600
 GOOGLE_PLACES_API_KEY=
+OPENAI_API_KEY=
 ```
 
 `GOOGLE_PLACES_API_KEY` is the preferred server-side key for Google Places calls. If it is unset, the backend falls back to `GOOGLE_MAPS_API_KEY`.

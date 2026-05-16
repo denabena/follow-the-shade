@@ -37,7 +37,7 @@ log = logging.getLogger(__name__)
 
 Preference = Literal["sun", "shade", "either"]
 Period = Literal["morning", "lunch", "afternoon"]
-Language = Literal["hr", "en", "it", "de", "sl", "fr"]
+Language = Literal["en"]
 ZAGREB_TZ = ZoneInfo("Europe/Zagreb")
 
 
@@ -51,7 +51,17 @@ class SplitArea:
 SPLIT_AREAS: tuple[SplitArea, ...] = (
     SplitArea(
         "Riva, Split",
-        ("riva", "old town", "central split"),
+        (
+            "riva",
+            "old town",
+            "central split",
+            "city center",
+            "city centre",
+            "center split",
+            "centre split",
+            "center",
+            "centre",
+        ),
         {"lat": 43.5081, "lng": 16.4391},
     ),
     SplitArea(
@@ -59,6 +69,7 @@ SPLIT_AREAS: tuple[SplitArea, ...] = (
         ("diocletian", "palace", "pjaca", "peristil"),
         {"lat": 43.5086, "lng": 16.4409},
     ),
+    SplitArea("Grad, Split", ("split grad",), {"lat": 43.5088, "lng": 16.4405}),
     SplitArea("Marmontova, Split", ("marmontova",), {"lat": 43.5102, "lng": 16.4382}),
     SplitArea(
         "Prokurative, Split",
@@ -66,18 +77,80 @@ SPLIT_AREAS: tuple[SplitArea, ...] = (
         {"lat": 43.5095, "lng": 16.4370},
     ),
     SplitArea("Matejuska, Split", ("matejuska",), {"lat": 43.5076, "lng": 16.4355}),
-    SplitArea("Varos, Split", ("varos",), {"lat": 43.5094, "lng": 16.4336}),
     SplitArea(
-        "Bacvice, Split", ("bacvice", "bacvice beach"), {"lat": 43.5039, "lng": 16.4514}
+        "Varos, Split",
+        ("varos", "veli varos"),
+        {"lat": 43.5094, "lng": 16.4336},
     ),
-    SplitArea("Firule, Split", ("firule",), {"lat": 43.5019, "lng": 16.4592}),
-    SplitArea("Znjan, Split", ("znjan",), {"lat": 43.5023, "lng": 16.4865}),
+    SplitArea(
+        "Lučac-Manuš, Split",
+        ("lucac-manus", "lucac manus", "lucac", "manus"),
+        {"lat": 43.5064, "lng": 16.4368},
+    ),
     SplitArea(
         "West Coast, Split",
         ("west coast", "zapadna obala"),
         {"lat": 43.5063, "lng": 16.4323},
     ),
+    SplitArea("Marjan, Split", ("marjan", "vidilica", "telegrin"), {"lat": 43.5142, "lng": 16.4275}),
+    SplitArea("Kasjuni, Split", ("kasjuni",), {"lat": 43.5088, "lng": 16.4187}),
+    SplitArea(
+        "Poljud, Split",
+        ("poljud",),
+        {"lat": 43.51944, "lng": 16.43167},
+    ),
+    SplitArea("Spinut, Split", ("spinut",), {"lat": 43.5175, "lng": 16.4178}),
+    SplitArea("Meje, Split", ("meje",), {"lat": 43.5138, "lng": 16.4078}),
     SplitArea("Sustipan, Split", ("sustipan",), {"lat": 43.5035, "lng": 16.4223}),
+    SplitArea(
+        "Bol, Split",
+        ("bol",),
+        {"lat": 43.5032, "lng": 16.4265},
+    ),
+    SplitArea(
+        "Bacvice, Split",
+        ("bacvice", "bacvice beach"),
+        {"lat": 43.5039, "lng": 16.4514},
+    ),
+    SplitArea("Firule, Split", ("firule",), {"lat": 43.5019, "lng": 16.4592}),
+    SplitArea("Lovret, Split", ("lovret",), {"lat": 43.5048, "lng": 16.4478}),
+    SplitArea("Znjan, Split", ("znjan",), {"lat": 43.5023, "lng": 16.4865}),
+    SplitArea("Trstenik, Split", ("trstenik",), {"lat": 43.5078, "lng": 16.4635}),
+    SplitArea("Mertojak, Split", ("mertojak",), {"lat": 43.5076, "lng": 16.4545}),
+    SplitArea(
+        "Blatine-Škrape, Split",
+        ("blatine-skrape", "blatine skrape", "blatine", "skrape"),
+        {"lat": 43.5132, "lng": 16.4668},
+    ),
+    SplitArea(
+        "Split 3, Split",
+        ("split 3", "treca cetvrt", "third district"),
+        {"lat": 43.5112, "lng": 16.4705},
+    ),
+    SplitArea("Pujanke, Split", ("pujanke",), {"lat": 43.5163, "lng": 16.4737}),
+    SplitArea("Sućidar, Split", ("sucidar",), {"lat": 43.5196, "lng": 16.4675}),
+    SplitArea("Visoka, Split", ("visoka",), {"lat": 43.5216, "lng": 16.4578}),
+    SplitArea("Lokve, Split", ("lokve",), {"lat": 43.5178, "lng": 16.4488}),
+    SplitArea("Gripe, Split", ("gripe",), {"lat": 43.5195, "lng": 16.4412}),
+    SplitArea("Plokite, Split", ("plokite",), {"lat": 43.5146, "lng": 16.4395}),
+    SplitArea("Kopilica, Split", ("kopilica",), {"lat": 43.5238, "lng": 16.4328}),
+    SplitArea("Kman, Split", ("kman",), {"lat": 43.5248, "lng": 16.4468}),
+    SplitArea(
+        "Ravne njive, Split",
+        ("ravne njive", "ravne"),
+        {"lat": 43.5295, "lng": 16.4638},
+    ),
+    SplitArea("Brda, Split", ("brda",), {"lat": 43.5348, "lng": 16.4725}),
+    SplitArea("Kocunar, Split", ("kocunar",), {"lat": 43.5148, "lng": 16.4798}),
+    SplitArea("Neslanovac, Split", ("neslanovac",), {"lat": 43.5395, "lng": 16.4878}),
+    SplitArea("Mejaši, Split", ("mejasi",), {"lat": 43.5428, "lng": 16.4978}),
+    SplitArea("Sirobuja, Split", ("sirobuja",), {"lat": 43.5078, "lng": 16.5028}),
+    SplitArea("Šine, Split", ("sine",), {"lat": 43.5298, "lng": 16.4395}),
+    SplitArea("Brodarica, Split", ("brodarica",), {"lat": 43.4998, "lng": 16.4688}),
+    SplitArea("Stobreč, Split", ("stobrec",), {"lat": 43.5036, "lng": 16.5748}),
+    SplitArea("Podstrana, Split", ("podstrana",), {"lat": 43.4888, "lng": 16.5585}),
+    SplitArea("Solin, Split", ("solin",), {"lat": 43.5442, "lng": 16.4928}),
+    SplitArea("Klis, Split", ("klis",), {"lat": 43.5588, "lng": 16.5228}),
 )
 
 
@@ -92,12 +165,14 @@ class ParsedRequest:
     period: Period | None
     must_be_open: bool
     language: Language
+    date_anchor: datetime | None = None
     needs_clarification: bool = False
     clarification: str | None = None
     outside_split: bool = False
     preference_explicit: bool = False
     location_explicit: bool = False
     time_explicit: bool = False
+    date_explicit: bool = False
 
 
 class FollowTheShadePipeline:
@@ -245,24 +320,34 @@ class FollowTheShadePipeline:
             "results": ranked,
             "source_notes": source_notes,
         }
+        answer_facts = _build_answer_facts(
+            parsed=parsed,
+            ranked=ranked,
+            weather=weather,
+            source_notes=source_notes,
+        )
         self._remember_thread_context(thread_id, parsed)
 
-        best = ranked[:3]
-        names = ", ".join(r["name"] for r in best)
+        weather_blocks_direct_sun = _weather_blocks_direct_sun(weather)
         preference_label = (
-            "outdoor" if parsed.preference == "either" else parsed.preference
+            "outdoor"
+            if parsed.preference == "either"
+            or (parsed.preference == "sun" and weather_blocks_direct_sun)
+            else parsed.preference
         )
         weather_note = _weather_answer_note(weather)
         answer = (
-            f"Best {preference_label} matches near {parsed.location_label} for "
-            f"{_short_time(parsed.start)}-{_short_time(parsed.end)}: {names}. "
-            f"{best[0]['exposure']['summary']}{weather_note}"
+            f"I found {len(ranked)} {preference_label} options near "
+            f"{parsed.location_label} for "
+            f"{_short_time(parsed.start)}-{_short_time(parsed.end)}."
+            f"{weather_note}"
         )
 
         return {
             "answer": answer,
             "thread_id": thread_id,
             "analysis_id": analysis_id,
+            "answer_facts": answer_facts,
             "map_payload": map_payload,
             "sources": source_notes,
             "detected_language": parsed.language,
@@ -526,8 +611,18 @@ class FollowTheShadePipeline:
             and previous.start is not None
             and previous.end is not None
         ):
-            updates["start"] = previous.start
-            updates["end"] = previous.end
+            if parsed.date_explicit and parsed.date_anchor is not None:
+                updates["start"] = _move_time_window_to_date(
+                    previous.start,
+                    parsed.date_anchor,
+                )
+                updates["end"] = _move_time_window_to_date(
+                    previous.end,
+                    parsed.date_anchor,
+                )
+            else:
+                updates["start"] = previous.start
+                updates["end"] = previous.end
             updates["period"] = previous.period
             updates["time_explicit"] = previous.time_explicit
 
@@ -561,9 +656,10 @@ class FollowTheShadePipeline:
     def parse_request(self, query: str, now: datetime | None = None) -> ParsedRequest:
         normalized = self._normalize(query)
         now_zagreb = (now or datetime.now(ZAGREB_TZ)).astimezone(ZAGREB_TZ)
-        language = _detect_language(normalized)
+        language: Language = "en"
         preference, preference_explicit = _parse_preference(normalized)
         area, location_explicit = _find_area(normalized)
+        date_anchor, date_explicit = _parse_date(normalized, now_zagreb)
 
         if re.search(
             r"\b(zagreb|tkalciceva|tkalca|dubrovnik|zadar|rijeka|pula)\b", normalized
@@ -576,14 +672,16 @@ class FollowTheShadePipeline:
                 start=None,
                 end=None,
                 period=None,
+                date_anchor=date_anchor,
                 must_be_open=True,
                 language=language,
                 outside_split=True,
                 preference_explicit=preference_explicit,
                 location_explicit=location_explicit,
+                date_explicit=date_explicit,
             )
 
-        time_window = _parse_time_window(normalized, now_zagreb)
+        time_window = _parse_time_window(normalized, date_anchor)
         if time_window is None:
             return ParsedRequest(
                 preference=preference,
@@ -593,6 +691,7 @@ class FollowTheShadePipeline:
                 start=None,
                 end=None,
                 period=None,
+                date_anchor=date_anchor,
                 must_be_open=True,
                 language=language,
                 needs_clarification=True,
@@ -602,6 +701,7 @@ class FollowTheShadePipeline:
                 ),
                 preference_explicit=preference_explicit,
                 location_explicit=location_explicit,
+                date_explicit=date_explicit,
             )
 
         start, end, period = time_window
@@ -613,11 +713,13 @@ class FollowTheShadePipeline:
             start=start,
             end=end,
             period=period,
+            date_anchor=date_anchor,
             must_be_open=True,
             language=language,
             preference_explicit=preference_explicit,
             location_explicit=location_explicit,
             time_explicit=True,
+            date_explicit=date_explicit,
         )
 
     @staticmethod
@@ -668,6 +770,114 @@ def _locality_score(
         0.25 if cafe_area and cafe_area.lower() in requested_area.lower() else 0.0
     )
     return min(1.0, proximity + area_bonus)
+
+
+def _build_answer_facts(
+    *,
+    parsed: ParsedRequest,
+    ranked: list[dict[str, Any]],
+    weather: dict[str, Any],
+    source_notes: list[str],
+) -> dict[str, Any]:
+    assert parsed.start and parsed.end
+    return {
+        "request": {
+            "preference": parsed.preference,
+            "location": parsed.location_label,
+            "time_window": {
+                "start": parsed.start.isoformat(timespec="seconds"),
+                "end": parsed.end.isoformat(timespec="seconds"),
+                "label": f"{_short_time(parsed.start)}-{_short_time(parsed.end)}",
+            },
+        },
+        "weather": _weather_answer_context(weather),
+        "best_matches": [_answer_match_fact(result) for result in ranked],
+        "source_context": {
+            "uses_google_places": any(
+                result.get("provider") == "google_places" for result in ranked
+            ),
+            "uses_open_meteo": any(value is not None for value in weather.values()),
+            "notes": source_notes,
+        },
+        "response_guidance": (
+            "Use these facts to recommend the strongest cafe by name and optionally "
+            "one backup. Mention weather only when it changes how sun or shade will "
+            "feel. Do not mention provider names, internal tools, estimated geometry, "
+            "or implementation caveats unless the user asks."
+        ),
+    }
+
+
+def _answer_match_fact(result: dict[str, Any]) -> dict[str, Any]:
+    exposure = result.get("exposure") or {}
+    outdoor_seating = result.get("outdoor_seating") or {}
+    return {
+        "name": result.get("name"),
+        "area": result.get("area"),
+        "address": result.get("address"),
+        "provider": result.get("provider"),
+        "rating": result.get("rating"),
+        "user_rating_count": result.get("user_rating_count"),
+        "open_for_window": result.get("is_open_for_window"),
+        "outdoor_seating_confidence": outdoor_seating.get("confidence"),
+        "match_score": exposure.get("match_score"),
+        "sun_ratio": exposure.get("sun_ratio"),
+        "exposure_summary": exposure.get("summary"),
+        "transition_notes": exposure.get("transition_notes") or [],
+        "samples": _compact_answer_samples(exposure.get("samples") or []),
+    }
+
+
+def _compact_answer_samples(samples: list[Any]) -> list[dict[str, str]]:
+    compact = []
+    for sample in samples[:8]:
+        if not isinstance(sample, dict):
+            continue
+        time_value = sample.get("time")
+        state = sample.get("state")
+        if not isinstance(time_value, str) or state not in {"sun", "shade"}:
+            continue
+        compact.append({"time": _sample_time_label(time_value), "state": state})
+    return compact
+
+
+def _sample_time_label(value: str) -> str:
+    try:
+        return datetime.fromisoformat(value).strftime("%H:%M")
+    except ValueError:
+        return value
+
+
+def _weather_answer_context(weather: dict[str, Any]) -> dict[str, Any]:
+    cloud_cover = weather.get("cloud_cover_avg")
+    precipitation_probability = weather.get("precipitation_probability_max")
+    precipitation_mm = weather.get("precipitation_mm_max")
+
+    if all(
+        value is None
+        for value in (cloud_cover, precipitation_probability, precipitation_mm)
+    ):
+        impact = "unknown"
+        user_summary = "Weather detail is unavailable; rely on geometric sun and shade."
+    elif _weather_blocks_direct_sun(weather):
+        impact = "direct_sun_blocked"
+        user_summary = (
+            "Rain or heavy cloud is expected, so direct sun will not feel reliable."
+        )
+    elif cloud_cover is not None and float(cloud_cover) > 60:
+        impact = "sun_muted"
+        user_summary = "Cloud cover may mute direct sun during the requested window."
+    else:
+        impact = "sun_feels_reliable"
+        user_summary = "No major weather issue is expected for direct sun."
+
+    return {
+        "cloud_cover_avg": cloud_cover,
+        "precipitation_probability_max": precipitation_probability,
+        "precipitation_mm_max": precipitation_mm,
+        "impact": impact,
+        "user_summary": user_summary,
+    }
 
 
 def _should_use_seed_pattern(
@@ -758,18 +968,34 @@ def _parse_preference(query: str) -> tuple[Preference, bool]:
     return "either", False
 
 
+def _alias_matches(normalized_query: str, alias: str) -> bool:
+    stripped = alias.strip()
+    if not stripped:
+        return False
+    if " " in stripped:
+        return stripped in normalized_query
+    if any(ch.isdigit() for ch in stripped):
+        return stripped in normalized_query
+    return (
+        re.search(
+            rf"(?<![a-z0-9]){re.escape(stripped)}(?![a-z0-9])",
+            normalized_query,
+        )
+        is not None
+    )
+
+
 def _find_area(query: str) -> tuple[SplitArea, bool]:
     for area in SPLIT_AREAS:
-        if any(alias in query for alias in area.aliases):
+        if any(_alias_matches(query, alias) for alias in area.aliases):
             return area, True
     return SPLIT_AREAS[0], False
 
 
 def _parse_time_window(
     query: str,
-    now: datetime,
+    date: datetime,
 ) -> tuple[datetime, datetime, Period] | None:
-    date = _parse_date(query, now)
     explicit = re.search(
         r"(?:from\s*)?(\d{1,2})(?::(\d{2}))?\s*(am|pm)?\s*(?:-|to|until|and)\s*(\d{1,2})(?::(\d{2}))?\s*(am|pm)?",
         query,
@@ -837,21 +1063,26 @@ def _parse_time_window(
     return None
 
 
-def _parse_date(query: str, now: datetime) -> datetime:
+def _parse_date(query: str, now: datetime) -> tuple[datetime, bool]:
     date = now
-    if "tomorrow" in query:
+    explicit = False
+    if "tomorrow" in query or "tommorow" in query:
         date = date + timedelta(days=1)
+        explicit = True
     weekday_match = re.search(
         r"\b(this\s+)?(monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b",
         query,
     )
     if weekday_match:
+        explicit = True
         target = _weekday_number(weekday_match.group(2))
         diff = (target - date.weekday()) % 7
         if diff == 0 and now.hour >= 18:
             diff = 7
         date = now + timedelta(days=diff)
-    return date
+    if "today" in query:
+        explicit = True
+    return date, explicit
 
 
 def _window(date: datetime, start_hour: int, end_hour: int, period: Period):
@@ -859,6 +1090,19 @@ def _window(date: datetime, start_hour: int, end_hour: int, period: Period):
         datetime(date.year, date.month, date.day, start_hour, tzinfo=ZAGREB_TZ),
         datetime(date.year, date.month, date.day, end_hour, tzinfo=ZAGREB_TZ),
         period,
+    )
+
+
+def _move_time_window_to_date(value: datetime, date_anchor: datetime) -> datetime:
+    return datetime(
+        date_anchor.year,
+        date_anchor.month,
+        date_anchor.day,
+        value.hour,
+        value.minute,
+        value.second,
+        value.microsecond,
+        tzinfo=ZAGREB_TZ,
     )
 
 
@@ -948,31 +1192,23 @@ def _weather_block_reason(weather: dict[str, Any]) -> str:
     precipitation_probability = weather.get("precipitation_probability_max")
     cloud_cover = weather.get("cloud_cover_avg")
     if precipitation_mm is not None and float(precipitation_mm) > 0:
-        return "Open-Meteo forecasts precipitation during the window"
+        return "precipitation during the window"
     if precipitation_probability is not None and float(precipitation_probability) >= 70:
-        return "Open-Meteo precipitation probability makes direct sun unlikely"
+        return "high precipitation probability during the window"
     if cloud_cover is not None and float(cloud_cover) >= 85:
-        return "Open-Meteo cloud cover makes direct sun unlikely"
-    return "Open-Meteo weather makes direct sun unlikely"
+        return "heavy cloud cover during the window"
+    return "weather blocks direct sun during the window"
 
 
 def _weather_answer_note(weather: dict[str, Any]) -> str:
     if _weather_blocks_direct_sun(weather):
-        return " Open-Meteo shows rain or heavy cloud for that window, so I am not treating geometric sun patches as usable direct sun."
+        return (
+            " Rain or heavy cloud keeps direct sun off the terrace during that window."
+        )
     cloud_cover = weather.get("cloud_cover_avg")
     if cloud_cover is not None and float(cloud_cover) > 60:
-        return " Forecast cloud cover is high, so direct sun may feel weaker than the geometric analysis."
+        return " Cloud cover keeps the sun muted during that window."
     return ""
-
-
-def _detect_language(query: str) -> Language:
-    if re.search(r"\b(ciao|ombra|sole|terrazza)\b", query):
-        return "it"
-    if re.search(r"\b(schatten|sonne|kaffee)\b", query):
-        return "de"
-    if re.search(r"\b(hlad|sunce|kava|terasa)\b", query):
-        return "hr"
-    return "en"
 
 
 def _short_time(value: datetime) -> str:

@@ -262,7 +262,8 @@ class FollowTheShadeDataSources:
 
         if len(cafes) < 3:
             uncertainty.append(
-                "Fewer than three Google cafe candidates returned; seed cafes fill the demo set."
+                "Fewer than three Google cafe candidates returned; curated seed pins "
+                "may fill remaining slots (illustrative demo locales are never added)."
             )
         supplemented = _merge_seed_supplements(cafes, self.seed_cafes, center, limit)
         if len(supplemented) > len(cafes):
@@ -392,10 +393,20 @@ class FollowTheShadeDataSources:
         )
 
     def _seed_fallback_bundle(self, reason: str) -> CafeCandidateBundle:
+        cafes: list[dict[str, Any]] = list(self.seed_cafes)
+        notes = ["Cafe data from mock seed file assets/split_cafe_seed.json."]
+        uncertainty = [reason]
+        if self.data_mode == "actual":
+            verified = [c for c in cafes if not _is_illustrative_demo_seed(c)]
+            if verified:
+                cafes = verified
+                notes.append(
+                    "Illustrative demo:* seed locales omitted when APIs are unavailable."
+                )
         return CafeCandidateBundle(
-            cafes=list(self.seed_cafes),
-            source_notes=["Cafe data from mock seed file assets/split_cafe_seed.json."],
-            uncertainty_notes=[reason],
+            cafes=cafes,
+            source_notes=notes,
+            uncertainty_notes=uncertainty,
         )
 
     def _normalize_provider_cafe(self, cafe: dict[str, Any]) -> dict[str, Any]:
@@ -436,16 +447,26 @@ def _merge_seed_supplements(
             break
         if seed["id"] in known_ids:
             continue
+        if _is_illustrative_demo_seed(seed):
+            continue
         merged.append(seed)
         known_ids.add(seed["id"])
     return merged
+
+
+def _is_illustrative_demo_seed(seed: dict[str, Any]) -> bool:
+    """Synthetic geometry-only seeds; never mix into Google Places results."""
+    return str(seed.get("id", "")).startswith("demo:")
 
 
 def _nearest_seed(
     seed_cafes: list[dict[str, Any]],
     point: dict[str, float],
 ) -> dict[str, Any]:
-    return min(seed_cafes, key=lambda cafe: _distance_m(point, cafe["terrace_point"]))
+    templates = [c for c in seed_cafes if not _is_illustrative_demo_seed(c)] or list(
+        seed_cafes
+    )
+    return min(templates, key=lambda cafe: _distance_m(point, cafe["terrace_point"]))
 
 
 def _rounded_center(center: dict[str, float]) -> dict[str, float]:

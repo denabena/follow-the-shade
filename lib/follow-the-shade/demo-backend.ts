@@ -3,7 +3,6 @@ import type {
   AnalysisRecord,
   ChatRequest,
   ChatResponse,
-  DetectedLanguage,
   ExposurePreference,
   ExposureSample,
   ExposureState,
@@ -16,63 +15,239 @@ import type {
 const seedCafes = seedCafeData as SeedCafe[];
 const ZAGREB_TIME_ZONE = "Europe/Zagreb";
 
-const SPLIT_AREAS: Array<{ label: string; aliases: string[]; center: LatLng }> = [
-  {
-    label: "Riva, Split",
-    aliases: ["riva", "old town", "central split", "center", "centre"],
-    center: { lat: 43.5081, lng: 16.4391 },
-  },
-  {
-    label: "Diocletian Palace, Split",
-    aliases: ["diocletian", "palace", "pjaca", "peristil"],
-    center: { lat: 43.5086, lng: 16.4409 },
-  },
-  {
-    label: "Marmontova, Split",
-    aliases: ["marmontova"],
-    center: { lat: 43.5102, lng: 16.4382 },
-  },
-  {
-    label: "Prokurative, Split",
-    aliases: ["prokurative", "trg republike"],
-    center: { lat: 43.5095, lng: 16.437 },
-  },
-  {
-    label: "Matejuska, Split",
-    aliases: ["matejuska", "matejuska"],
-    center: { lat: 43.5076, lng: 16.4355 },
-  },
-  {
-    label: "Varos, Split",
-    aliases: ["varos", "varos"],
-    center: { lat: 43.5094, lng: 16.4336 },
-  },
-  {
-    label: "Bacvice, Split",
-    aliases: ["bacvice", "bacvice beach"],
-    center: { lat: 43.5039, lng: 16.4514 },
-  },
-  {
-    label: "Firule, Split",
-    aliases: ["firule"],
-    center: { lat: 43.5019, lng: 16.4592 },
-  },
-  {
-    label: "Znjan, Split",
-    aliases: ["znjan"],
-    center: { lat: 43.5023, lng: 16.4865 },
-  },
-  {
-    label: "West Coast, Split",
-    aliases: ["west coast", "zapadna obala"],
-    center: { lat: 43.5063, lng: 16.4323 },
-  },
-  {
-    label: "Sustipan, Split",
-    aliases: ["sustipan"],
-    center: { lat: 43.5035, lng: 16.4223 },
-  },
-];
+const SPLIT_AREAS: Array<{ label: string; aliases: string[]; center: LatLng }> =
+  [
+    {
+      label: "Riva, Split",
+      aliases: [
+        "riva",
+        "old town",
+        "central split",
+        "city center",
+        "city centre",
+        "center split",
+        "centre split",
+        "center",
+        "centre",
+      ],
+      center: { lat: 43.5081, lng: 16.4391 },
+    },
+    {
+      label: "Diocletian Palace, Split",
+      aliases: ["diocletian", "palace", "pjaca", "peristil"],
+      center: { lat: 43.5086, lng: 16.4409 },
+    },
+    {
+      label: "Grad, Split",
+      aliases: ["split grad"],
+      center: { lat: 43.5088, lng: 16.4405 },
+    },
+    {
+      label: "Marmontova, Split",
+      aliases: ["marmontova"],
+      center: { lat: 43.5102, lng: 16.4382 },
+    },
+    {
+      label: "Prokurative, Split",
+      aliases: ["prokurative", "trg republike"],
+      center: { lat: 43.5095, lng: 16.437 },
+    },
+    {
+      label: "Matejuska, Split",
+      aliases: ["matejuska"],
+      center: { lat: 43.5076, lng: 16.4355 },
+    },
+    {
+      label: "Varos, Split",
+      aliases: ["varos", "veli varos"],
+      center: { lat: 43.5094, lng: 16.4336 },
+    },
+    {
+      label: "Lučac-Manuš, Split",
+      aliases: ["lucac-manus", "lucac manus", "lucac", "manus"],
+      center: { lat: 43.5064, lng: 16.4368 },
+    },
+    {
+      label: "West Coast, Split",
+      aliases: ["west coast", "zapadna obala"],
+      center: { lat: 43.5063, lng: 16.4323 },
+    },
+    {
+      label: "Marjan, Split",
+      aliases: ["marjan", "vidilica", "telegrin"],
+      center: { lat: 43.5142, lng: 16.4275 },
+    },
+    {
+      label: "Kasjuni, Split",
+      aliases: ["kasjuni"],
+      center: { lat: 43.5088, lng: 16.4187 },
+    },
+    {
+      label: "Poljud, Split",
+      aliases: ["poljud"],
+      center: { lat: 43.51944, lng: 16.43167 },
+    },
+    {
+      label: "Spinut, Split",
+      aliases: ["spinut"],
+      center: { lat: 43.5175, lng: 16.4178 },
+    },
+    {
+      label: "Meje, Split",
+      aliases: ["meje"],
+      center: { lat: 43.5138, lng: 16.4078 },
+    },
+    {
+      label: "Sustipan, Split",
+      aliases: ["sustipan"],
+      center: { lat: 43.5035, lng: 16.4223 },
+    },
+    {
+      label: "Bol, Split",
+      aliases: ["bol"],
+      center: { lat: 43.5032, lng: 16.4265 },
+    },
+    {
+      label: "Bacvice, Split",
+      aliases: ["bacvice", "bacvice beach"],
+      center: { lat: 43.5039, lng: 16.4514 },
+    },
+    {
+      label: "Firule, Split",
+      aliases: ["firule"],
+      center: { lat: 43.5019, lng: 16.4592 },
+    },
+    {
+      label: "Lovret, Split",
+      aliases: ["lovret"],
+      center: { lat: 43.5048, lng: 16.4478 },
+    },
+    {
+      label: "Znjan, Split",
+      aliases: ["znjan"],
+      center: { lat: 43.5023, lng: 16.4865 },
+    },
+    {
+      label: "Trstenik, Split",
+      aliases: ["trstenik"],
+      center: { lat: 43.5078, lng: 16.4635 },
+    },
+    {
+      label: "Mertojak, Split",
+      aliases: ["mertojak"],
+      center: { lat: 43.5076, lng: 16.4545 },
+    },
+    {
+      label: "Blatine-Škrape, Split",
+      aliases: ["blatine-skrape", "blatine skrape", "blatine", "skrape"],
+      center: { lat: 43.5132, lng: 16.4668 },
+    },
+    {
+      label: "Split 3, Split",
+      aliases: ["split 3", "treca cetvrt", "third district"],
+      center: { lat: 43.5112, lng: 16.4705 },
+    },
+    {
+      label: "Pujanke, Split",
+      aliases: ["pujanke"],
+      center: { lat: 43.5163, lng: 16.4737 },
+    },
+    {
+      label: "Sućidar, Split",
+      aliases: ["sucidar"],
+      center: { lat: 43.5196, lng: 16.4675 },
+    },
+    {
+      label: "Visoka, Split",
+      aliases: ["visoka"],
+      center: { lat: 43.5216, lng: 16.4578 },
+    },
+    {
+      label: "Lokve, Split",
+      aliases: ["lokve"],
+      center: { lat: 43.5178, lng: 16.4488 },
+    },
+    {
+      label: "Gripe, Split",
+      aliases: ["gripe"],
+      center: { lat: 43.5195, lng: 16.4412 },
+    },
+    {
+      label: "Plokite, Split",
+      aliases: ["plokite"],
+      center: { lat: 43.5146, lng: 16.4395 },
+    },
+    {
+      label: "Kopilica, Split",
+      aliases: ["kopilica"],
+      center: { lat: 43.5238, lng: 16.4328 },
+    },
+    {
+      label: "Kman, Split",
+      aliases: ["kman"],
+      center: { lat: 43.5248, lng: 16.4468 },
+    },
+    {
+      label: "Ravne njive, Split",
+      aliases: ["ravne njive", "ravne"],
+      center: { lat: 43.5295, lng: 16.4638 },
+    },
+    {
+      label: "Brda, Split",
+      aliases: ["brda"],
+      center: { lat: 43.5348, lng: 16.4725 },
+    },
+    {
+      label: "Kocunar, Split",
+      aliases: ["kocunar"],
+      center: { lat: 43.5148, lng: 16.4798 },
+    },
+    {
+      label: "Neslanovac, Split",
+      aliases: ["neslanovac"],
+      center: { lat: 43.5395, lng: 16.4878 },
+    },
+    {
+      label: "Mejaši, Split",
+      aliases: ["mejasi"],
+      center: { lat: 43.5428, lng: 16.4978 },
+    },
+    {
+      label: "Sirobuja, Split",
+      aliases: ["sirobuja"],
+      center: { lat: 43.5078, lng: 16.5028 },
+    },
+    {
+      label: "Šine, Split",
+      aliases: ["sine"],
+      center: { lat: 43.5298, lng: 16.4395 },
+    },
+    {
+      label: "Brodarica, Split",
+      aliases: ["brodarica"],
+      center: { lat: 43.4998, lng: 16.4688 },
+    },
+    {
+      label: "Stobreč, Split",
+      aliases: ["stobrec"],
+      center: { lat: 43.5036, lng: 16.5748 },
+    },
+    {
+      label: "Podstrana, Split",
+      aliases: ["podstrana"],
+      center: { lat: 43.4888, lng: 16.5585 },
+    },
+    {
+      label: "Solin, Split",
+      aliases: ["solin"],
+      center: { lat: 43.5442, lng: 16.4928 },
+    },
+    {
+      label: "Klis, Split",
+      aliases: ["klis"],
+      center: { lat: 43.5588, lng: 16.5228 },
+    },
+  ];
 
 const globalStore = globalThis as typeof globalThis & {
   followTheShadeAnalyses?: Map<string, AnalysisRecord>;
@@ -104,7 +279,8 @@ export async function buildDemoChatResponse(
 
   if (!message) {
     return {
-      answer: "Tell me where in Split you want to sit and what time window to check.",
+      answer:
+        "Tell me where in Split you want to sit and what time window to check.",
       thread_id: threadId,
       analysis_id: null,
       map_payload: null,
@@ -115,7 +291,7 @@ export async function buildDemoChatResponse(
   }
 
   const normalized = normalize(message);
-  const detectedLanguage = detectLanguage(normalized);
+  const detectedLanguage = "en";
 
   if (isOutsideSplit(normalized)) {
     return {
@@ -171,16 +347,18 @@ export async function buildDemoChatResponse(
   };
   analysisStore.set(analysisId, record);
 
-  const best = mapPayload.results.slice(0, 3);
   const timeLabel = `${shortTime(mapPayload.request.start)}-${shortTime(
     mapPayload.request.end,
   )}`;
+  const preferenceLabel =
+    preference === "either"
+      ? "outdoor"
+      : preference === "shade"
+        ? "shade-friendly"
+        : "sunny";
   const answer = [
-    `Best ${preference === "either" ? "outdoor" : preference} matches near ${
-      area.label
-    } for ${timeLabel}: ${best.map((result) => result.name).join(", ")}.`,
-    best[0]?.exposure.summary,
-    "This demo uses seeded terrace points and sample exposure patterns; the FastAPI backend will replace it with Google/OSM buildings, Astral/Shapely shadows, and Open-Meteo weather.",
+    `I found ${mapPayload.results.length} ${preferenceLabel} options near ${area.label} for ${timeLabel}.`,
+    "Terrace points and exposure patterns are demo estimates, so treat timing as approximate.",
   ]
     .filter(Boolean)
     .join(" ");
@@ -396,29 +574,49 @@ function parsePreference(query: string): ExposurePreference {
   return "either";
 }
 
+function aliasMatches(query: string, alias: string): boolean {
+  const s = alias.trim();
+  if (!s) return false;
+  if (s.includes(" ")) return query.includes(s);
+  if (/\d/.test(s)) return query.includes(s);
+  const escaped = s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return new RegExp(`(?<![a-z0-9])${escaped}(?![a-z0-9])`).test(query);
+}
+
 function findArea(query: string): { label: string; center: LatLng } {
   return (
     SPLIT_AREAS.find((area) =>
-      area.aliases.some((alias) => query.includes(alias)),
+      area.aliases.some((alias) => aliasMatches(query, alias)),
     ) ?? SPLIT_AREAS[0]
   );
 }
 
 function isOutsideSplit(query: string): boolean {
-  return /\b(zagreb|tkalciceva|tkalca|dubrovnik|zadar|rijeka|pula)\b/.test(query);
+  return /\b(zagreb|tkalciceva|tkalca|dubrovnik|zadar|rijeka|pula)\b/.test(
+    query,
+  );
 }
 
-function parseTimeWindow(
-  query: string,
-): { start: string; end: string; period: "morning" | "lunch" | "afternoon" } | null {
+function parseTimeWindow(query: string): {
+  start: string;
+  end: string;
+  period: "morning" | "lunch" | "afternoon";
+} | null {
   const date = parseDateLabel(query);
   const explicit = query.match(
     /(?:from\s*)?(\d{1,2})(?::(\d{2}))?\s*(am|pm)?\s*(?:-|to|until)\s*(\d{1,2})(?::(\d{2}))?\s*(am|pm)?/,
   );
 
   if (explicit) {
-    const [, rawStartHour, rawStartMinute, rawStartMeridiem, rawEndHour, rawEndMinute, rawEndMeridiem] =
-      explicit;
+    const [
+      ,
+      rawStartHour,
+      rawStartMinute,
+      rawStartMeridiem,
+      rawEndHour,
+      rawEndMinute,
+      rawEndMeridiem,
+    ] = explicit;
     const endMeridiem = rawEndMeridiem as "am" | "pm" | undefined;
     const startMeridiem =
       (rawStartMeridiem as "am" | "pm" | undefined) ?? endMeridiem;
@@ -426,7 +624,8 @@ function parseTimeWindow(
     const endHour = toHour24(Number(rawEndHour), endMeridiem);
     const startMinute = Number(rawStartMinute ?? "0");
     const endMinute = Number(rawEndMinute ?? "0");
-    const period = startHour < 12 ? "morning" : startHour < 14 ? "lunch" : "afternoon";
+    const period =
+      startHour < 12 ? "morning" : startHour < 14 ? "lunch" : "afternoon";
 
     return {
       start: localIso(date, startHour, startMinute),
@@ -492,22 +691,6 @@ function parseDateLabel(query: string): string {
   }
 
   return date.toISOString().slice(0, 10);
-}
-
-function detectLanguage(query: string): DetectedLanguage {
-  if (/\b(ciao|ombra|sole|terrazza)\b/.test(query)) {
-    return "it";
-  }
-
-  if (/\b(schatten|sonne|kaffee)\b/.test(query)) {
-    return "de";
-  }
-
-  if (/\b(hlad|sunce|kava|terasa)\b/.test(query)) {
-    return "hr";
-  }
-
-  return "en";
 }
 
 function normalize(value: string): string {
