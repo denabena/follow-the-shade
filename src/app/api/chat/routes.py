@@ -20,6 +20,7 @@ from app.api.chat.schemas import (
     SpeechTtsTemporaryKeyRequest,
     SpeechTtsTemporaryKeyResponse,
 )
+from app.api.chat.generate_answer import ChatFlowResult, run_chat_flow
 from app.auth.deps import get_optional_user_id
 from app.state import AppState, get_state
 from core.config import settings
@@ -277,26 +278,42 @@ async def chat_final_answer(
         prefs = state.preferences_store.get(user_id)
         message = enrich_query_with_preferences(message, prefs)
 
-    result = await state.agent.answer(
-        message=message,
-        thread_id=chat_request.thread_id,
-    )
+    if state.agent_app is not None:
+        result = await run_chat_flow(
+            input_text=message,
+            thread_id=chat_request.thread_id,
+            agent_app=state.agent_app,
+        )
+    elif state.agent is not None:
+        raw_result = await state.agent.answer(
+            message=message,
+            thread_id=chat_request.thread_id,
+        )
+        result = ChatFlowResult(
+            answer=raw_result["answer"],
+            analysis_id=raw_result.get("analysis_id"),
+            map_payload=raw_result.get("map_payload"),
+            sources=raw_result.get("sources", []),
+            detected_language=raw_result.get("detected_language"),
+        )
+    else:
+        raise HTTPException(status_code=503, detail="Chat agent is not initialized.")
 
     audio = None
     if chat_request.include_audio:
         audio = await _generate_soniox_tts(
-            answer=result["answer"],
-            language=result["detected_language"],
+            answer=result.answer,
+            language=result.detected_language,
         )
 
     return ChatResponse(
-        answer=result["answer"],
+        answer=result.answer,
         thread_id=chat_request.thread_id,
-        analysis_id=result.get("analysis_id"),
-        map_payload=result.get("map_payload"),
-        sources=result.get("sources", []),
+        analysis_id=result.analysis_id,
+        map_payload=result.map_payload,
+        sources=result.sources,
         audio=audio,
-        detected_language=result.get("detected_language"),
+        detected_language=result.detected_language,
     )
 
 

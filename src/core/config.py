@@ -35,6 +35,7 @@ class Settings(BaseSettings):
     SONIOX_TTS_TIMEOUT_SECONDS: float = 30.0
 
     SESSION_TTL_SECONDS: int = 24 * 60 * 60
+    AGENT_CONFIG_PATH: str = "agent_config.yaml"
     SPLIT_CAFE_SEED_PATH: str = "assets/split_cafe_seed.json"
     CHAT_MAX_INPUT_CHARS: int = 800
     FOLLOW_THE_SHADE_DATA_MODE: Literal["mock", "actual"] = "mock"

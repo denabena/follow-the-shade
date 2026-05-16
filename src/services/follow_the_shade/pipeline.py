@@ -91,12 +91,14 @@ class ParsedRequest:
     period: Period | None
     must_be_open: bool
     language: Language
+    date_anchor: datetime | None = None
     needs_clarification: bool = False
     clarification: str | None = None
     outside_split: bool = False
     preference_explicit: bool = False
     location_explicit: bool = False
     time_explicit: bool = False
+    date_explicit: bool = False
 
 
 class FollowTheShadePipeline:
@@ -523,8 +525,18 @@ class FollowTheShadePipeline:
             and previous.start is not None
             and previous.end is not None
         ):
-            updates["start"] = previous.start
-            updates["end"] = previous.end
+            if parsed.date_explicit and parsed.date_anchor is not None:
+                updates["start"] = _move_time_window_to_date(
+                    previous.start,
+                    parsed.date_anchor,
+                )
+                updates["end"] = _move_time_window_to_date(
+                    previous.end,
+                    parsed.date_anchor,
+                )
+            else:
+                updates["start"] = previous.start
+                updates["end"] = previous.end
             updates["period"] = previous.period
             updates["time_explicit"] = previous.time_explicit
 
@@ -561,6 +573,7 @@ class FollowTheShadePipeline:
         language = _detect_language(normalized)
         preference, preference_explicit = _parse_preference(normalized)
         area, location_explicit = _find_area(normalized)
+        date_anchor, date_explicit = _parse_date(normalized, now_zagreb)
 
         if re.search(
             r"\b(zagreb|tkalciceva|tkalca|dubrovnik|zadar|rijeka|pula)\b", normalized
@@ -573,14 +586,16 @@ class FollowTheShadePipeline:
                 start=None,
                 end=None,
                 period=None,
+                date_anchor=date_anchor,
                 must_be_open=True,
                 language=language,
                 outside_split=True,
                 preference_explicit=preference_explicit,
                 location_explicit=location_explicit,
+                date_explicit=date_explicit,
             )
 
-        time_window = _parse_time_window(normalized, now_zagreb)
+        time_window = _parse_time_window(normalized, date_anchor)
         if time_window is None:
             return ParsedRequest(
                 preference=preference,
@@ -590,6 +605,7 @@ class FollowTheShadePipeline:
                 start=None,
                 end=None,
                 period=None,
+                date_anchor=date_anchor,
                 must_be_open=True,
                 language=language,
                 needs_clarification=True,
@@ -599,6 +615,7 @@ class FollowTheShadePipeline:
                 ),
                 preference_explicit=preference_explicit,
                 location_explicit=location_explicit,
+                date_explicit=date_explicit,
             )
 
         start, end, period = time_window
@@ -610,11 +627,13 @@ class FollowTheShadePipeline:
             start=start,
             end=end,
             period=period,
+            date_anchor=date_anchor,
             must_be_open=True,
             language=language,
             preference_explicit=preference_explicit,
             location_explicit=location_explicit,
             time_explicit=True,
+            date_explicit=date_explicit,
         )
 
     @staticmethod
@@ -764,9 +783,8 @@ def _find_area(query: str) -> tuple[SplitArea, bool]:
 
 def _parse_time_window(
     query: str,
-    now: datetime,
+    date: datetime,
 ) -> tuple[datetime, datetime, Period] | None:
-    date = _parse_date(query, now)
     explicit = re.search(
         r"(?:from\s*)?(\d{1,2})(?::(\d{2}))?\s*(am|pm)?\s*(?:-|to|until|and)\s*(\d{1,2})(?::(\d{2}))?\s*(am|pm)?",
         query,
@@ -834,21 +852,26 @@ def _parse_time_window(
     return None
 
 
-def _parse_date(query: str, now: datetime) -> datetime:
+def _parse_date(query: str, now: datetime) -> tuple[datetime, bool]:
     date = now
-    if "tomorrow" in query:
+    explicit = False
+    if "tomorrow" in query or "tommorow" in query:
         date = date + timedelta(days=1)
+        explicit = True
     weekday_match = re.search(
         r"\b(this\s+)?(monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b",
         query,
     )
     if weekday_match:
+        explicit = True
         target = _weekday_number(weekday_match.group(2))
         diff = (target - date.weekday()) % 7
         if diff == 0 and now.hour >= 18:
             diff = 7
         date = now + timedelta(days=diff)
-    return date
+    if "today" in query:
+        explicit = True
+    return date, explicit
 
 
 def _window(date: datetime, start_hour: int, end_hour: int, period: Period):
@@ -856,6 +879,19 @@ def _window(date: datetime, start_hour: int, end_hour: int, period: Period):
         datetime(date.year, date.month, date.day, start_hour, tzinfo=ZAGREB_TZ),
         datetime(date.year, date.month, date.day, end_hour, tzinfo=ZAGREB_TZ),
         period,
+    )
+
+
+def _move_time_window_to_date(value: datetime, date_anchor: datetime) -> datetime:
+    return datetime(
+        date_anchor.year,
+        date_anchor.month,
+        date_anchor.day,
+        value.hour,
+        value.minute,
+        value.second,
+        value.microsecond,
+        tzinfo=ZAGREB_TZ,
     )
 
 

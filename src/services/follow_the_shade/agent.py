@@ -15,4 +15,4 @@ class FollowTheShadeAgent:
         self.tool = tool
 
     async def answer(self, *, message: str, thread_id: str) -> dict:
-        return await self.tool.arun(query=message, thread_id=thread_id)
+        return await self.tool.run_pipeline(query=message, thread_id=thread_id)
