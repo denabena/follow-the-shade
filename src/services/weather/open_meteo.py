@@ -27,7 +27,7 @@ class OpenMeteoClient:
         params = {
             "latitude": lat,
             "longitude": lng,
-            "hourly": "cloud_cover,precipitation_probability",
+            "hourly": "cloud_cover,precipitation_probability,precipitation",
             "timezone": "Europe/Zagreb",
             "start_date": start_local.date().isoformat(),
             "end_date": end_local.date().isoformat(),
@@ -39,15 +39,21 @@ class OpenMeteoClient:
                 data = response.json()
         except httpx.HTTPError as exc:
             log.warning("Open-Meteo request failed: %s", exc)
-            return {"cloud_cover_avg": None, "precipitation_probability_max": None}
+            return {
+                "cloud_cover_avg": None,
+                "precipitation_probability_max": None,
+                "precipitation_mm_max": None,
+            }
 
         hourly = data.get("hourly", {})
         times: list[str] = hourly.get("time", [])
         cloud_values = hourly.get("cloud_cover", [])
         precip_values = hourly.get("precipitation_probability", [])
+        precip_amount_values = hourly.get("precipitation", [])
 
         selected_cloud: list[float] = []
         selected_precip: list[float] = []
+        selected_precip_amount: list[float] = []
         for index, time_label in enumerate(times):
             hour_dt = datetime.fromisoformat(time_label).replace(tzinfo=ZAGREB_TZ)
             if start_local <= hour_dt <= end_local:
@@ -55,12 +61,22 @@ class OpenMeteoClient:
                     selected_cloud.append(float(cloud_values[index]))
                 if index < len(precip_values) and precip_values[index] is not None:
                     selected_precip.append(float(precip_values[index]))
+                if (
+                    index < len(precip_amount_values)
+                    and precip_amount_values[index] is not None
+                ):
+                    selected_precip_amount.append(float(precip_amount_values[index]))
 
         return {
-            "cloud_cover_avg": round(sum(selected_cloud) / len(selected_cloud), 1)
-            if selected_cloud
-            else None,
-            "precipitation_probability_max": max(selected_precip)
-            if selected_precip
-            else None,
+            "cloud_cover_avg": (
+                round(sum(selected_cloud) / len(selected_cloud), 1)
+                if selected_cloud
+                else None
+            ),
+            "precipitation_probability_max": (
+                max(selected_precip) if selected_precip else None
+            ),
+            "precipitation_mm_max": (
+                max(selected_precip_amount) if selected_precip_amount else None
+            ),
         }

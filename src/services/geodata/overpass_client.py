@@ -105,6 +105,13 @@ out skel qt;
         center: dict[str, float],
         radius_m: float = 35.0,
     ) -> list[dict[str, Any]]:
+        return await self.fetch_outdoor_seating(center, radius_m=radius_m)
+
+    async def fetch_outdoor_seating(
+        self,
+        center: dict[str, float],
+        radius_m: float = 450.0,
+    ) -> list[dict[str, Any]]:
         south, west, north, east = _bbox_from_center(center, radius_m)
         query = f"""
 [out:json][timeout:25];
@@ -115,6 +122,14 @@ out skel qt;
 out body center;
 """
         data = await self._post(query)
+        return self._parse_outdoor_seating(data, center, radius_m)
+
+    def _parse_outdoor_seating(
+        self,
+        data: dict[str, Any],
+        center: dict[str, float],
+        radius_m: float,
+    ) -> list[dict[str, Any]]:
         results = []
         for element in data.get("elements", []):
             if element["type"] == "node":

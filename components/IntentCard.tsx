@@ -1,35 +1,37 @@
-import type { IntentRequest } from "@/lib/types"
-import { formatTimeWindow } from "@/lib/format"
-import { cn } from "@/lib/cn"
+import type { IntentRequest } from "@/lib/types";
+import { formatTimeWindow } from "@/lib/format";
+import { cn } from "@/lib/cn";
 
 type Props = {
-  intent: IntentRequest
-}
+  intent: IntentRequest;
+};
 
 const IntentCard = ({ intent }: Props) => {
-  const isSun = intent.preference === "sun"
+  const isSun = intent.preference === "sun";
+  const preferenceLabel =
+    intent.preference === "sun"
+      ? "Sun"
+      : intent.preference === "shade"
+        ? "Shade"
+        : "Either";
   return (
     <div
       className={cn(
         "inline-flex flex-wrap items-center gap-2 rounded-full border border-ink/15 bg-bone-soft/70 py-1.5 pl-1.5 pr-4 text-sm",
-        "fts-fade-up"
+        "fts-fade-up",
       )}
     >
       <span
         className={cn(
           "flex h-6 w-6 items-center justify-center rounded-full text-bone",
-          isSun ? "bg-gold-sun text-ink" : "bg-ink"
+          isSun ? "bg-gold-sun text-ink" : "bg-ink",
         )}
         aria-hidden="true"
       >
-        {isSun ? (
-          <SunMark />
-        ) : (
-          <ShadeMark />
-        )}
+        {isSun ? <SunMark /> : <ShadeMark />}
       </span>
       <span className="font-display text-[15px] tracking-tight">
-        {isSun ? "Sun" : "Shade"}
+        {preferenceLabel}
       </span>
       <span className="text-ink/30">·</span>
       <span className="font-mono text-[12px] tracking-[0.1em] text-ink/80">
@@ -38,14 +40,14 @@ const IntentCard = ({ intent }: Props) => {
       <span className="text-ink/30">·</span>
       <span className="text-[13px] text-ink/80">near {intent.area.name}</span>
     </div>
-  )
-}
+  );
+};
 
 const SunMark = () => (
   <svg viewBox="0 0 16 16" className="h-3.5 w-3.5" aria-hidden="true">
     <circle cx="8" cy="8" r="3" fill="currentColor" />
     {[...Array(8)].map((_, i) => {
-      const a = (i * Math.PI) / 4
+      const a = (i * Math.PI) / 4;
       return (
         <line
           key={i}
@@ -57,10 +59,10 @@ const SunMark = () => (
           strokeWidth={1.4}
           strokeLinecap="round"
         />
-      )
+      );
     })}
   </svg>
-)
+);
 
 const ShadeMark = () => (
   <svg viewBox="0 0 16 16" className="h-3.5 w-3.5" aria-hidden="true">
@@ -69,6 +71,6 @@ const ShadeMark = () => (
       fill="#f4efe6"
     />
   </svg>
-)
+);
 
-export default IntentCard
+export default IntentCard;

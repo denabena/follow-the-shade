@@ -84,9 +84,16 @@ def _normalise_tts_language(language: str | None) -> str:
     return language_code[:8] or "en"
 
 
+def _normalise_tts_model(model: str | None = None) -> str:
+    configured_model = (model or settings.SONIOX_TTS_MODEL or "tts-rt-v1").strip()
+    if configured_model == "tts-rt-preview":
+        return "tts-rt-v1"
+    return configured_model or "tts-rt-v1"
+
+
 def _build_soniox_tts_config(language: str | None = None) -> SpeechTtsRealtimeConfig:
     return SpeechTtsRealtimeConfig(
-        model=settings.SONIOX_TTS_MODEL,
+        model=_normalise_tts_model(),
         language=_normalise_tts_language(language),
         voice=settings.SONIOX_TTS_VOICE,
         audio_format=settings.SONIOX_TTS_STREAM_AUDIO_FORMAT,
@@ -192,7 +199,7 @@ async def _generate_soniox_tts(
 
     audio_format = settings.SONIOX_TTS_AUDIO_FORMAT
     payload = {
-        "model": settings.SONIOX_TTS_MODEL,
+        "model": _normalise_tts_model(),
         "language": _normalise_tts_language(language),
         "voice": settings.SONIOX_TTS_VOICE,
         "audio_format": audio_format,

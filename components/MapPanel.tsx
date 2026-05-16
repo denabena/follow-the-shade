@@ -7,7 +7,12 @@ import {
   useRef,
   useState
 } from "react"
-import type { LightsSpecification, Map as MapboxMap, Marker } from "mapbox-gl"
+import type {
+  LightsSpecification,
+  Map as MapboxMap,
+  Marker,
+  Popup,
+} from "mapbox-gl"
 import type { Cafe, CafeResult, IntentArea } from "@/lib/types"
 import type { ShadeMapHandle } from "@/lib/shademap"
 import { createShadeMap } from "@/lib/shademap"
@@ -21,7 +26,7 @@ export type MapPanelHandle = {
   sampleSun: (lng: number, lat: number) => Promise<boolean>
   setResults: (results: CafeResult[], preference: "sun" | "shade" | "either") => void
   clearResults: () => void
-  focusCafe: (cafe: Cafe) => void
+  focusCafe: (cafe: Cafe) => void | Promise<void>
   resize: () => void
 }
 
@@ -70,7 +75,7 @@ const makeMarkerEl = (
   cafe: Cafe,
   matched: boolean,
   preference: "sun" | "shade" | "either",
-  onClick: () => void
+  onClick: (e: MouseEvent) => void
 ): HTMLElement => {
   const wrapper = document.createElement("button")
   wrapper.type = "button"
@@ -88,8 +93,77 @@ const makeMarkerEl = (
     <span class="block h-2.5 w-2.5 rounded-full border ${ring} transition-all duration-300 group-hover:scale-125"></span>
     <span class="pointer-events-none absolute left-1/2 top-full mt-2 -translate-x-1/2 whitespace-nowrap rounded-sm bg-ink/95 px-2 py-1 text-[10px] font-medium uppercase tracking-[0.14em] text-bone opacity-0 transition-opacity duration-200 group-hover:opacity-100">${cafe.name}</span>
   `
-  wrapper.addEventListener("click", onClick)
+  wrapper.addEventListener("click", (ev) => {
+    ev.stopPropagation()
+    onClick(ev as MouseEvent)
+  })
   return wrapper
+}
+
+const cafeNameInitials = (name: string): string => {
+  const parts = name.trim().split(/\s+/).filter(Boolean)
+  if (parts.length === 0) return "?"
+  if (parts.length === 1) return parts[0]!.slice(0, 2).toUpperCase()
+  return (parts[0]![0]! + parts[1]![0]!).toUpperCase()
+}
+
+const googleMapsUrlForCafe = (cafe: Cafe): string => {
+  if (cafe.google_maps_uri) return cafe.google_maps_uri
+  const q = encodeURIComponent(`${cafe.name} ${cafe.neighborhood} Split Croatia`)
+  return `https://www.google.com/maps/search/?api=1&query=${q}`
+}
+
+const buildCafePopupDom = (cafe: Cafe): HTMLElement => {
+  const root = document.createElement("div")
+  root.className =
+    "flex w-64 max-w-[min(18rem,88vw)] flex-col gap-2.5 text-left text-ink"
+
+  const frame = document.createElement("div")
+  frame.className =
+    "relative aspect-[4/3] w-full overflow-hidden rounded-lg border border-ink/10 bg-bone-deep"
+
+  if (cafe.place_photo_p) {
+    const img = document.createElement("img")
+    img.src = `/places/photo?p=${encodeURIComponent(cafe.place_photo_p)}`
+    img.alt = ""
+    img.className = "h-full w-full object-cover"
+    img.loading = "lazy"
+    img.decoding = "async"
+    frame.appendChild(img)
+  } else {
+    const placeholder = document.createElement("div")
+    placeholder.className =
+      "flex h-full min-h-[5.5rem] w-full items-center justify-center font-display text-2xl tracking-tight text-ink/30"
+    placeholder.textContent = cafeNameInitials(cafe.name)
+    frame.appendChild(placeholder)
+  }
+  root.appendChild(frame)
+
+  const title = document.createElement("p")
+  title.className = "font-display text-[17px] leading-snug text-ink"
+  title.textContent = cafe.name
+  root.appendChild(title)
+
+  const sub = document.createElement("p")
+  sub.className = "text-[11px] font-medium uppercase tracking-[0.16em] text-ink/55"
+  sub.textContent = cafe.neighborhood
+  root.appendChild(sub)
+
+  const link = document.createElement("a")
+  link.href = googleMapsUrlForCafe(cafe)
+  link.target = "_blank"
+  link.rel = "noopener noreferrer"
+  link.className =
+    "inline-flex w-fit items-center rounded-full border border-ink/25 px-3 py-1.5 text-[10.5px] font-medium uppercase tracking-[0.12em] text-ink/85 transition-colors hover:border-terracotta hover:text-terracotta"
+  link.textContent = "Open in Google Maps"
+  root.appendChild(link)
+
+  const attr = document.createElement("p")
+  attr.className = "mt-0.5 text-[9px] leading-snug text-ink/40"
+  attr.textContent = "Photos and listing via Google"
+  root.appendChild(attr)
+
+  return root
 }
 
 const hideAddressLabels = (map: MapboxMap) => {
@@ -127,6 +201,7 @@ const MapPanel = forwardRef<MapPanelHandle, Props>(function MapPanel(
   const mapRef = useRef<MapboxMap | null>(null)
   const shadeRef = useRef<ShadeMapHandle | null>(null)
   const markersRef = useRef<Marker[]>([])
+  const popupRef = useRef<Popup | null>(null)
   const onCafeClickRef = useRef(onCafeClick)
   const [showLoadOverlay, setShowLoadOverlay] = useState(true)
   const [status, setStatus] = useState<MapStatus>(() =>
@@ -283,6 +358,8 @@ const MapPanel = forwardRef<MapPanelHandle, Props>(function MapPanel(
       cancelled = true
       markersRef.current.forEach((m) => m.remove())
       markersRef.current = []
+      popupRef.current?.remove()
+      popupRef.current = null
       shadeRef.current?.destroy()
       shadeRef.current = null
       mapRef.current?.remove()
@@ -347,13 +424,33 @@ const MapPanel = forwardRef<MapPanelHandle, Props>(function MapPanel(
         if (!map) return
         markersRef.current.forEach((m) => m.remove())
         markersRef.current = []
+        popupRef.current?.remove()
+
+        const openCafePopup = async (cafe: Cafe) => {
+          const mapboxgl = (await import("mapbox-gl")).default
+          const m = mapRef.current
+          if (!m) return
+          if (!popupRef.current) {
+            popupRef.current = new mapboxgl.Popup({
+              offset: 22,
+              closeButton: true,
+              closeOnClick: true,
+              maxWidth: "min(320px, 92vw)"
+            })
+          }
+          popupRef.current
+            .setLngLat([cafe.lng, cafe.lat])
+            .setDOMContent(buildCafePopupDom(cafe))
+            .addTo(m)
+          onCafeClickRef.current?.(cafe)
+        }
 
         const setupMarker = async () => {
           const mapboxgl = (await import("mapbox-gl")).default
           results.forEach((r) => {
-            const el = makeMarkerEl(r.cafe, r.matches, preference, () =>
-              onCafeClickRef.current?.(r.cafe)
-            )
+            const el = makeMarkerEl(r.cafe, r.matches, preference, () => {
+              void openCafePopup(r.cafe)
+            })
             const marker = new mapboxgl.Marker({
               element: el,
               anchor: "center"
@@ -363,13 +460,14 @@ const MapPanel = forwardRef<MapPanelHandle, Props>(function MapPanel(
             markersRef.current.push(marker)
           })
         }
-        setupMarker()
+        void setupMarker()
       },
       clearResults: () => {
         markersRef.current.forEach((m) => m.remove())
         markersRef.current = []
+        popupRef.current?.remove()
       },
-      focusCafe: (cafe) => {
+      focusCafe: async (cafe) => {
         mapRef.current?.resize()
         mapRef.current?.flyTo({
           center: [cafe.lng, cafe.lat],
@@ -378,6 +476,21 @@ const MapPanel = forwardRef<MapPanelHandle, Props>(function MapPanel(
           speed: 1.1,
           essential: true
         })
+        const mapboxgl = (await import("mapbox-gl")).default
+        const map = mapRef.current
+        if (!map) return
+        if (!popupRef.current) {
+          popupRef.current = new mapboxgl.Popup({
+            offset: 22,
+            closeButton: true,
+            closeOnClick: true,
+            maxWidth: "min(320px, 92vw)"
+          })
+        }
+        popupRef.current
+          .setLngLat([cafe.lng, cafe.lat])
+          .setDOMContent(buildCafePopupDom(cafe))
+          .addTo(map)
       },
       resize: () => {
         mapRef.current?.resize()

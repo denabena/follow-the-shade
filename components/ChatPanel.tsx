@@ -1,6 +1,6 @@
 "use client"
 
-import { UserButton } from "@clerk/nextjs"
+import { useAuth } from "@clerk/nextjs"
 import Link from "next/link"
 import { useEffect, useRef, useState } from "react"
 import type { Cafe } from "@/lib/types"
@@ -40,6 +40,25 @@ declare global {
   }
 }
 
+type WeatherReport = {
+  temperatureC: number
+  feelsLikeC: number
+  windKmh: number
+  condition: string
+}
+
+const weatherLabelFromCode = (code: number): string => {
+  if (code === 0) return "Clear sky"
+  if ([1, 2].includes(code)) return "Partly cloudy"
+  if (code === 3) return "Overcast"
+  if ([45, 48].includes(code)) return "Foggy"
+  if ([51, 53, 55, 56, 57].includes(code)) return "Drizzle"
+  if ([61, 63, 65, 66, 67, 80, 81, 82].includes(code)) return "Rain"
+  if ([71, 73, 75, 77, 85, 86].includes(code)) return "Snow"
+  if ([95, 96, 99].includes(code)) return "Thunderstorm"
+  return "Variable conditions"
+}
+
 type Props = {
   messages: ChatMessageData[]
   busy: boolean
@@ -50,6 +69,7 @@ type Props = {
   onSuggestion: (id: SuggestionId) => void
   onStreamComplete: (messageId: string) => void
   onCafeSelect: (cafe: Cafe) => void
+  onOpenPreferences: () => void
 }
 
 const ChatPanel = ({
@@ -61,11 +81,18 @@ const ChatPanel = ({
   onSend,
   onSuggestion,
   onStreamComplete,
-  onCafeSelect
+  onCafeSelect,
+  onOpenPreferences
 }: Props) => {
+  const { userId } = useAuth()
   const [draft, setDraft] = useState("")
   const [speechError, setSpeechError] = useState<string | null>(null)
   const [listening, setListening] = useState(false)
+  const [now, setNow] = useState(() => new Date())
+  const [weather, setWeather] = useState<WeatherReport | null>(null)
+  const [weatherStatus, setWeatherStatus] = useState<"loading" | "ready" | "error">(
+    "loading"
+  )
   const scrollerRef = useRef<HTMLDivElement>(null)
   const recognitionRef = useRef<SpeechRecognitionLike | null>(null)
 
@@ -74,6 +101,78 @@ const ChatPanel = ({
     if (!el) return
     el.scrollTo({ top: el.scrollHeight, behavior: "smooth" })
   }, [messages])
+
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      setNow(new Date())
+    }, 30000)
+    return () => window.clearInterval(timer)
+  }, [])
+
+  useEffect(() => {
+    let cancelled = false
+
+    const loadWeather = async () => {
+      try {
+        setWeatherStatus("loading")
+        const res = await fetch(
+          "https://api.open-meteo.com/v1/forecast?latitude=43.5081&longitude=16.4402&current=temperature_2m,apparent_temperature,weather_code,wind_speed_10m&timezone=auto",
+          { cache: "no-store" }
+        )
+        if (!res.ok) throw new Error("weather_unavailable")
+
+        const data = (await res.json()) as {
+          current?: {
+            temperature_2m?: number
+            apparent_temperature?: number
+            weather_code?: number
+            wind_speed_10m?: number
+          }
+        }
+
+        const current = data.current
+        if (
+          !current ||
+          current.temperature_2m === undefined ||
+          current.apparent_temperature === undefined ||
+          current.weather_code === undefined ||
+          current.wind_speed_10m === undefined
+        ) {
+          throw new Error("weather_payload_invalid")
+        }
+
+        if (!cancelled) {
+          setWeather({
+            temperatureC: current.temperature_2m,
+            feelsLikeC: current.apparent_temperature,
+            windKmh: current.wind_speed_10m,
+            condition: weatherLabelFromCode(current.weather_code)
+          })
+          setWeatherStatus("ready")
+        }
+      } catch {
+        if (!cancelled) {
+          setWeatherStatus("error")
+        }
+      }
+    }
+
+    void loadWeather()
+    const refreshTimer = window.setInterval(() => {
+      void loadWeather()
+    }, 10 * 60 * 1000)
+
+    return () => {
+      cancelled = true
+      window.clearInterval(refreshTimer)
+    }
+  }, [])
+
+  const dayTimeLabel = new Intl.DateTimeFormat(undefined, {
+    weekday: "long",
+    hour: "2-digit",
+    minute: "2-digit"
+  }).format(now)
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
@@ -177,23 +276,31 @@ const ChatPanel = ({
         className
       )}
     >
-      <Header />
+      <Header
+        dayTimeLabel={dayTimeLabel}
+        signedIn={Boolean(userId)}
+        weather={weather}
+        weatherStatus={weatherStatus}
+        onOpenPreferences={onOpenPreferences}
+      />
 
       <div
         ref={scrollerRef}
         role="log"
         aria-live="polite"
         aria-relevant="additions"
-        className="relative z-[2] flex-1 space-y-6 overflow-y-auto px-7 pb-6 pt-2 sm:px-10"
+        className="relative z-[2] flex flex-1 flex-col overflow-y-auto px-7 pb-6 pt-2 sm:px-10"
       >
-        {messages.map((m) => (
-          <ChatMessage
-            key={m.id}
-            message={m}
-            onStreamComplete={() => onStreamComplete(m.id)}
-            onCafeSelect={onCafeSelect}
-          />
-        ))}
+        <div className="space-y-6">
+          {messages.map((m) => (
+            <ChatMessage
+              key={m.id}
+              message={m}
+              onStreamComplete={() => onStreamComplete(m.id)}
+              onCafeSelect={onCafeSelect}
+            />
+          ))}
+        </div>
       </div>
 
       {showSuggestions && (
@@ -206,7 +313,7 @@ const ChatPanel = ({
               onClick={() => onSuggestion(s.id)}
               disabled={busy}
               className={cn(
-                "group rounded-full border border-terracotta/40 bg-bone-soft px-3.5 py-2 text-[12.5px] leading-tight text-ink",
+                "group cursor-pointer rounded-full border border-terracotta/40 bg-bone-soft px-3.5 py-2 text-[12.5px] leading-tight text-ink",
                 "transition-all hover:-translate-y-0.5 hover:border-terracotta hover:bg-bone-deep",
                 "disabled:cursor-not-allowed disabled:opacity-50"
               )}
@@ -251,7 +358,7 @@ const ChatPanel = ({
             aria-pressed={listening}
             onClick={handleSpeechClick}
             className={cn(
-              "grid h-10 w-10 shrink-0 place-items-center rounded-full border text-ink transition-all",
+              "grid h-10 w-10 shrink-0 cursor-pointer place-items-center rounded-full border text-ink transition-all",
               listening
                 ? "border-terracotta bg-terracotta text-bone shadow-[0_0_0_6px_rgba(199,107,69,0.12)]"
                 : "border-ink/35 hover:border-terracotta hover:text-terracotta",
@@ -265,7 +372,7 @@ const ChatPanel = ({
             disabled={!draft.trim() || busy}
             aria-label="Send message"
             className={cn(
-              "inline-flex h-10 shrink-0 items-center justify-center rounded-full border border-ink px-5 text-[12.5px] font-medium uppercase tracking-[0.16em] text-ink",
+              "inline-flex h-10 shrink-0 cursor-pointer items-center justify-center rounded-full border border-ink px-5 text-[12.5px] font-medium uppercase tracking-[0.16em] text-ink",
               "transition-all hover:bg-ink hover:text-bone",
               "disabled:cursor-not-allowed disabled:border-ink/30 disabled:text-ink/30 disabled:hover:bg-transparent"
             )}
@@ -283,25 +390,69 @@ const ChatPanel = ({
   )
 }
 
-const Header = () => (
-  <header className="relative z-[2] flex items-start justify-between gap-4 px-7 pb-3 pt-7 sm:px-10">
-    <div>
-      <p className="font-mono text-[10px] uppercase tracking-[0.32em] text-terracotta-deep">
-        Split · sun &amp; shade
-      </p>
-      <h1 className="font-display text-[34px] leading-[1.05] tracking-tight text-ink">
+const Header = ({
+  dayTimeLabel,
+  signedIn,
+  weather,
+  weatherStatus,
+  onOpenPreferences
+}: {
+  dayTimeLabel: string
+  signedIn: boolean
+  weather: WeatherReport | null
+  weatherStatus: "loading" | "ready" | "error"
+  onOpenPreferences: () => void
+}) => (
+  <header className="relative z-[2] px-4 pb-2 pt-5 sm:px-7 sm:pb-3 sm:pt-7 lg:px-10">
+    <p className="font-mono text-[9px] uppercase tracking-[0.28em] text-terracotta-deep sm:text-[10px] sm:tracking-[0.32em]">
+      Split · {dayTimeLabel}
+    </p>
+    <div className="mt-1 flex items-center justify-between gap-3 sm:mt-1.5 sm:gap-4">
+      <h1 className="font-display -translate-x-[2px] min-w-0 flex-1 text-[1.625rem] leading-[1.06] tracking-tight text-ink sm:text-[32px] sm:leading-[1.05] lg:text-[34px]">
         Follow the Shade
       </h1>
+      <div className="shrink-0">
+        {signedIn ? (
+          <button
+            type="button"
+            onClick={onOpenPreferences}
+            className="rounded-full border border-ink/25 px-2.5 py-2 text-[10px] font-medium uppercase tracking-[0.12em] text-ink/72 transition-colors min-[360px]:px-3 min-[360px]:py-1.5 min-[360px]:text-[10.5px] sm:hover:border-ink/40 sm:hover:text-ink"
+          >
+            <span className="sm:hidden">Prefs</span>
+            <span className="hidden sm:inline">Preferences</span>
+          </button>
+        ) : (
+          <Link
+            href="/sign-in"
+            className="rounded-full border border-ink/25 px-2.5 py-2 text-[10px] font-medium uppercase tracking-[0.12em] text-ink/72 transition-colors min-[360px]:px-3 min-[360px]:py-1.5 min-[360px]:text-[10.5px] sm:hover:border-ink/40 sm:hover:text-ink"
+          >
+            Sign up
+          </Link>
+        )}
+      </div>
     </div>
-    <div className="flex shrink-0 items-center gap-3 pt-1">
-      <Link
-        href="/settings"
-        className="text-[11px] font-medium uppercase tracking-[0.14em] text-ink/55 hover:text-ink"
+    {weatherStatus === "ready" && weather ? (
+      <p
+        className="mt-2 flex max-w-full flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] leading-snug text-ink/62"
+        aria-live="polite"
       >
-        prefs
-      </Link>
-      <UserButton />
-    </div>
+        <span className="font-medium text-ink">{Math.round(weather.temperatureC)}°C</span>
+        <span className="text-ink/32" aria-hidden>
+          ·
+        </span>
+        <span>{weather.condition}</span>
+        <span className="text-ink/32" aria-hidden>
+          ·
+        </span>
+        <span>Feels {Math.round(weather.feelsLikeC)}°C</span>
+        <span className="text-ink/32" aria-hidden>
+          ·
+        </span>
+        <span>Wind {Math.round(weather.windKmh)} km/h</span>
+      </p>
+    ) : weatherStatus === "loading" ? (
+      <p className="mt-2 text-[11px] text-ink/45">Loading weather in Split…</p>
+    ) : null}
   </header>
 )
 

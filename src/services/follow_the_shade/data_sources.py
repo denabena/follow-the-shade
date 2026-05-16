@@ -40,14 +40,23 @@ class BuildingSummary:
 class WeatherSummary:
     cloud_cover_avg: int | None = None
     precipitation_probability_max: int | None = None
+    precipitation_mm_max: float | None = None
     source_notes: list[str] = field(default_factory=list)
     uncertainty_notes: list[str] = field(default_factory=list)
 
-    def to_result_weather(self) -> dict[str, int | None]:
+    def to_result_weather(self) -> dict[str, int | float | None]:
         return {
             "cloud_cover_avg": self.cloud_cover_avg,
             "precipitation_probability_max": self.precipitation_probability_max,
+            "precipitation_mm_max": self.precipitation_mm_max,
         }
+
+
+@dataclass
+class OutdoorSeatingSummary:
+    points: list[dict[str, Any]] = field(default_factory=list)
+    source_notes: list[str] = field(default_factory=list)
+    uncertainty_notes: list[str] = field(default_factory=list)
 
 
 class FollowTheShadeDataSources:
@@ -185,6 +194,38 @@ class FollowTheShadeDataSources:
         self.cache.set(cache_key, summary)
         return summary
 
+    async def outdoor_seating_summary(
+        self,
+        *,
+        center: dict[str, float],
+        radius_m: int,
+    ) -> OutdoorSeatingSummary:
+        cache_key = TtlCache.make_key(
+            "outdoor_seating",
+            {
+                "mode": self.data_mode,
+                "center": _rounded_center(center),
+                "radius_m": _radius_bucket(radius_m),
+            },
+        )
+        cached = self.cache.get(cache_key)
+        if cached is not None:
+            return cached
+
+        if self.data_mode == "mock":
+            summary = OutdoorSeatingSummary(
+                uncertainty_notes=["Outdoor seating is not fetched in mock mode."],
+            )
+            self.cache.set(cache_key, summary)
+            return summary
+
+        summary = await self._overpass_outdoor_seating_summary(
+            center=center,
+            radius_m=radius_m,
+        )
+        self.cache.set(cache_key, summary)
+        return summary
+
     async def _google_places_candidates(
         self,
         *,
@@ -295,8 +336,9 @@ class FollowTheShadeDataSources:
         )
         cloud_cover = weather.get("cloud_cover_avg")
         precipitation = weather.get("precipitation_probability_max")
+        precipitation_mm = weather.get("precipitation_mm_max")
 
-        if cloud_cover is None and precipitation is None:
+        if cloud_cover is None and precipitation is None and precipitation_mm is None:
             return WeatherSummary(
                 source_notes=[
                     "Open-Meteo returned no hourly weather samples for the requested window."
@@ -311,7 +353,42 @@ class FollowTheShadeDataSources:
             precipitation_probability_max=(
                 int(precipitation) if precipitation is not None else None
             ),
+            precipitation_mm_max=(
+                float(precipitation_mm) if precipitation_mm is not None else None
+            ),
             source_notes=["Weather context from Open-Meteo hourly forecast."],
+        )
+
+    async def _overpass_outdoor_seating_summary(
+        self,
+        *,
+        center: dict[str, float],
+        radius_m: int,
+    ) -> OutdoorSeatingSummary:
+        from services.geodata.overpass_client import OverpassClient
+
+        points = await OverpassClient(
+            getattr(self.settings, "OVERPASS_URL")
+        ).fetch_outdoor_seating(
+            center,
+            radius_m=min(radius_m, 900),
+        )
+        if not points:
+            return OutdoorSeatingSummary(
+                source_notes=["No mapped OSM outdoor-seating points returned nearby."],
+                uncertainty_notes=[
+                    "Terrace points without mapped outdoor seating are estimated."
+                ],
+            )
+
+        return OutdoorSeatingSummary(
+            points=points,
+            source_notes=[
+                f"Outdoor seating hints from OpenStreetMap/Overpass ({len(points)} nearby points)."
+            ],
+            uncertainty_notes=[
+                "Terrace matching uses nearby mapped outdoor-seating points when available."
+            ],
         )
 
     def _seed_fallback_bundle(self, reason: str) -> CafeCandidateBundle:
