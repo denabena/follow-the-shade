@@ -10,6 +10,7 @@ class Settings(BaseSettings):
 
     OPENAI_API_KEY: Optional[str] = None
     GOOGLE_MAPS_API_KEY: Optional[str] = None
+    GOOGLE_PLACES_API_KEY: Optional[str] = None
     FOURSQUARE_API_KEY: Optional[str] = None
     OUTSCRAPER_API_KEY: Optional[str] = None
     SHADOWMAP_API_KEY: Optional[str] = None

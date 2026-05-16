@@ -192,7 +192,9 @@ class FollowTheShadeDataSources:
         radius_m: int,
         limit: int,
     ) -> CafeCandidateBundle:
-        api_key = getattr(self.settings, "GOOGLE_MAPS_API_KEY", None)
+        api_key = getattr(self.settings, "GOOGLE_PLACES_API_KEY", None) or getattr(
+            self.settings, "GOOGLE_MAPS_API_KEY", None
+        )
         if not api_key:
             return self._seed_fallback_bundle(
                 "Google Places is not configured; using mock cafe data."

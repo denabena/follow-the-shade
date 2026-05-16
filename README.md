@@ -19,12 +19,12 @@ The MVP keeps one agent and one deterministic tool. External APIs sit behind cac
 
 There are two separate toggles:
 
-| Variable | Layer | Use |
-|----------|-------|-----|
-| `FOLLOW_THE_SHADE_USE_MOCK=true` | Next route handlers | Return the local TypeScript mock response. |
-| `FOLLOW_THE_SHADE_USE_MOCK=false` | Next route handlers | Proxy `/chat/...` routes to FastAPI. |
-| `FOLLOW_THE_SHADE_DATA_MODE=mock` | Python backend | Use seed cafe data and mocked weather/building notes. |
-| `FOLLOW_THE_SHADE_DATA_MODE=actual` | Python backend | Attempt Google Places, Overpass, and Open-Meteo calls, with seed fallbacks. |
+| Variable                            | Layer               | Use                                                                         |
+| ----------------------------------- | ------------------- | --------------------------------------------------------------------------- |
+| `FOLLOW_THE_SHADE_USE_MOCK=true`    | Next route handlers | Return the local TypeScript mock response.                                  |
+| `FOLLOW_THE_SHADE_USE_MOCK=false`   | Next route handlers | Proxy `/chat/...` routes to FastAPI.                                        |
+| `FOLLOW_THE_SHADE_DATA_MODE=mock`   | Python backend      | Use seed cafe data and mocked weather/building notes.                       |
+| `FOLLOW_THE_SHADE_DATA_MODE=actual` | Python backend      | Attempt Google Places, Overpass, and Open-Meteo calls, with seed fallbacks. |
 
 Default for frontend work:
 
@@ -48,7 +48,10 @@ FOLLOW_THE_SHADE_USE_MOCK=false
 FOLLOW_THE_SHADE_API_BASE_URL=http://127.0.0.1:8000
 FOLLOW_THE_SHADE_DATA_MODE=actual
 FOLLOW_THE_SHADE_CACHE_TTL_SECONDS=600
+GOOGLE_PLACES_API_KEY=
 ```
+
+`GOOGLE_PLACES_API_KEY` is the preferred server-side key for Google Places calls. If it is unset, the backend falls back to `GOOGLE_MAPS_API_KEY`.
 
 ## Run Locally
 
@@ -83,9 +86,9 @@ Primary request:
 
 ```json
 {
-	"message": "Find me a shady cafe outside near Riva today from 3 to 5pm.",
-	"thread_id": "stable-session-id",
-	"include_audio": false
+  "message": "Find me a shady cafe outside near Riva today from 3 to 5pm.",
+  "thread_id": "stable-session-id",
+  "include_audio": false
 }
 ```
 
@@ -93,13 +96,13 @@ Primary response:
 
 ```json
 {
-	"answer": "Assistant prose",
-	"thread_id": "stable-session-id",
-	"analysis_id": "shade_20260516_abcd1234",
-	"map_payload": {},
-	"sources": [],
-	"audio": null,
-	"detected_language": "en"
+  "answer": "Assistant prose",
+  "thread_id": "stable-session-id",
+  "analysis_id": "shade_20260516_abcd1234",
+  "map_payload": {},
+  "sources": [],
+  "audio": null,
+  "detected_language": "en"
 }
 ```
 

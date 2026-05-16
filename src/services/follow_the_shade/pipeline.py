@@ -107,10 +107,9 @@ class FollowTheShadePipeline:
         self.seed_cafes = self._load_seed_cafes(seed_path)
         self.overpass = OverpassClient(settings.OVERPASS_URL)
         self.meteo = OpenMeteoClient(settings.OPEN_METEO_BASE_URL)
+        places_api_key = settings.GOOGLE_PLACES_API_KEY or settings.GOOGLE_MAPS_API_KEY
         self.places = (
-            GooglePlacesClient(settings.GOOGLE_MAPS_API_KEY)
-            if settings.GOOGLE_MAPS_API_KEY
-            else None
+            GooglePlacesClient(places_api_key) if places_api_key is not None else None
         )
         self.data_sources = data_sources or FollowTheShadeDataSources(
             settings=settings,
