@@ -5,6 +5,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any, Literal
 
+from services.follow_the_shade.address_display import format_address_for_display
 from services.follow_the_shade.cache import TtlCache
 
 DataMode = Literal["mock", "actual"]
@@ -415,6 +416,16 @@ class FollowTheShadeDataSources:
             "lng": float(cafe["location"]["lng"]),
         }
         seed_template = _nearest_seed(self.seed_cafes, point)
+        raw_address = cafe.get("address")
+        if isinstance(raw_address, str) and raw_address.strip():
+            normalized_addr = format_address_for_display(raw_address)
+            display_address = (
+                normalized_addr
+                if normalized_addr
+                else (cafe.get("area") or seed_template.get("area", "Riva"))
+            )
+        else:
+            display_address = None
         return {
             **cafe,
             "area": cafe.get("area") or seed_template.get("area", "Riva"),
@@ -424,7 +435,9 @@ class FollowTheShadeDataSources:
             "outdoor_seating_confidence": cafe.get("outdoor_seating_confidence")
             or "unknown",
             "is_open_for_window": cafe.get("is_open_for_window", True),
-            "address": cafe.get("address") or "Split, Croatia",
+            "address": display_address
+            or cafe.get("area")
+            or seed_template.get("area", "Riva"),
             "rating": cafe.get("rating"),
             "user_rating_count": cafe.get("user_rating_count"),
             "google_maps_uri": cafe.get("google_maps_uri"),

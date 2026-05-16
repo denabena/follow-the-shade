@@ -23,6 +23,8 @@ export type MapPayloadResult = {
   id: string;
   name: string;
   provider: string;
+  /** Neighborhood / micro-area when street-only address is unavailable. */
+  area?: string;
   location: LatLng;
   terrace_point: LatLng;
   address: string;

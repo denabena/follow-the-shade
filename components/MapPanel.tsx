@@ -136,13 +136,27 @@ const cafeNameInitials = (name: string): string => {
   return (parts[0]![0]! + parts[1]![0]!).toUpperCase()
 }
 
-const googleMapsUrlForCafe = (cafe: Cafe): string => {
-  if (cafe.google_maps_uri) return cafe.google_maps_uri
-  const q = encodeURIComponent(`${cafe.name} ${cafe.neighborhood} Split Croatia`)
-  return `https://www.google.com/maps/search/?api=1&query=${q}`
+/** Walking directions in Google Maps; include user [lng,lat] as origin when known. */
+const googleMapsDirectionsUrl = (
+  cafe: Cafe,
+  userLngLat: [number, number] | null,
+): string => {
+  const params = new URLSearchParams({
+    api: "1",
+    destination: `${cafe.lat},${cafe.lng}`,
+    travelmode: "walking",
+  })
+  if (userLngLat) {
+    const [lng, lat] = userLngLat
+    params.set("origin", `${lat},${lng}`)
+  }
+  return `https://www.google.com/maps/dir/?${params.toString()}`
 }
 
-const buildCafePopupDom = (cafe: Cafe): HTMLElement => {
+const buildCafePopupDom = (
+  cafe: Cafe,
+  userLngLat: [number, number] | null,
+): HTMLElement => {
   const root = document.createElement("div")
   root.className =
     "box-border flex w-full min-w-0 max-w-full flex-col gap-1.5 text-left text-ink"
@@ -227,14 +241,31 @@ const buildCafePopupDom = (cafe: Cafe): HTMLElement => {
   sub.textContent = cafe.neighborhood
   root.appendChild(sub)
 
-  const link = document.createElement("a")
-  link.href = googleMapsUrlForCafe(cafe)
-  link.target = "_blank"
-  link.rel = "noopener noreferrer"
-  link.className =
-    "inline-flex w-fit max-w-full items-center rounded-full border border-ink/25 px-2 py-0.5 text-[9px] font-medium uppercase tracking-[0.1em] text-ink/85 transition-colors hover:border-terracotta hover:text-terracotta"
-  link.textContent = "Open in Google Maps"
-  root.appendChild(link)
+  const nav = document.createElement("a")
+  nav.href = googleMapsDirectionsUrl(cafe, userLngLat)
+  nav.target = "_blank"
+  nav.rel = "noopener noreferrer"
+  nav.setAttribute(
+    "aria-label",
+    userLngLat
+      ? `Navigate to ${cafe.name} from your location in Google Maps`
+      : `Navigate to ${cafe.name} in Google Maps`,
+  )
+  nav.className =
+    "inline-flex w-fit max-w-full items-center gap-1.5 border-0 bg-transparent p-0 text-left text-[11px] font-medium text-terracotta underline-offset-2 transition-colors hover:text-terracotta-deep hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-terracotta/35 focus-visible:ring-offset-1 focus-visible:ring-offset-bone"
+
+  const navIcon = document.createElement("span")
+  navIcon.className = "inline-flex shrink-0 text-current"
+  navIcon.setAttribute("aria-hidden", "true")
+  navIcon.innerHTML =
+    '<svg class="size-3.5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="3 11 22 2 13 21 11 13 3 11"/></svg>'
+
+  const navLabel = document.createElement("span")
+  navLabel.textContent = "Navigate"
+
+  nav.appendChild(navIcon)
+  nav.appendChild(navLabel)
+  root.appendChild(nav)
 
   const attr = document.createElement("p")
   attr.className = "mt-0 text-[8px] leading-snug text-ink/40"
@@ -690,12 +721,17 @@ const MapPanel = forwardRef<MapPanelHandle, Props>(function MapPanel(
           const mapboxgl = (await import("mapbox-gl")).default
           const m = mapRef.current
           if (!m) return
+          let origin = userLngLatRef.current
+          if (!origin) {
+            origin = await requestFreshUserLngLat()
+            if (origin) userLngLatRef.current = origin
+          }
           if (!popupRef.current) {
             popupRef.current = new mapboxgl.Popup(CAFE_POPUP_OPTIONS)
           }
           popupRef.current
             .setLngLat(lngLatForCafe(cafe))
-            .setDOMContent(buildCafePopupDom(cafe))
+            .setDOMContent(buildCafePopupDom(cafe, origin))
             .addTo(m)
           onCafeClickRef.current?.(cafe)
           await drawUserWalkingRouteToCafe(cafe)
@@ -762,12 +798,17 @@ const MapPanel = forwardRef<MapPanelHandle, Props>(function MapPanel(
         const mapboxgl = (await import("mapbox-gl")).default
         const map = mapRef.current
         if (!map) return
+        let origin = userLngLatRef.current
+        if (!origin) {
+          origin = await requestFreshUserLngLat()
+          if (origin) userLngLatRef.current = origin
+        }
         if (!popupRef.current) {
           popupRef.current = new mapboxgl.Popup(CAFE_POPUP_OPTIONS)
         }
         popupRef.current
           .setLngLat(lngLat)
-          .setDOMContent(buildCafePopupDom(cafe))
+          .setDOMContent(buildCafePopupDom(cafe, origin))
           .addTo(map)
         await drawUserWalkingRouteToCafe(cafe)
       },

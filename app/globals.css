@@ -246,6 +246,7 @@ summary:hover {
 
 /* Cafe marker popup: compact card; scroll if needed */
 .fts-cafe-popup .mapboxgl-popup-content {
+  border-radius: 1.25rem;
   max-height: min(40dvh, 300px);
   padding: 9px 11px;
   overflow-x: hidden;

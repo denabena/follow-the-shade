@@ -15,6 +15,7 @@ from typing import Any, Literal
 from zoneinfo import ZoneInfo
 
 from core.config import Settings
+from services.follow_the_shade.address_display import format_address_for_display
 from services.follow_the_shade.cache import TtlCache
 from services.follow_the_shade.data_sources import (
     BuildingSummary,
@@ -475,6 +476,16 @@ class FollowTheShadePipeline:
         weather: dict[str, Any],
     ) -> dict[str, Any]:
         score = exposure.match_score
+        raw_addr = cafe.get("address")
+        if isinstance(raw_addr, str) and raw_addr.strip():
+            normalized_addr = format_address_for_display(raw_addr)
+            display_address = (
+                normalized_addr
+                if normalized_addr
+                else (cafe.get("area") or "")
+            )
+        else:
+            display_address = raw_addr
         return {
             "id": cafe["id"],
             "name": cafe["name"],
@@ -482,7 +493,7 @@ class FollowTheShadePipeline:
             "area": cafe.get("area"),
             "location": cafe["location"],
             "terrace_point": {"lat": terrace["lat"], "lng": terrace["lng"]},
-            "address": cafe.get("address"),
+            "address": display_address,
             "google_maps_uri": cafe.get("google_maps_uri"),
             "place_photo_p": place_photo_p_from_cafe(cafe),
             "rating": cafe.get("rating"),

@@ -10,16 +10,65 @@ const parseDate = (value: string): Date => {
   return new Date();
 };
 
-const toCafe = (result: MapPayloadResult): Cafe => ({
-  id: result.id,
-  name: result.name,
-  neighborhood: result.address,
-  blurb: result.exposure.summary,
-  lng: result.terrace_point.lng,
-  lat: result.terrace_point.lat,
-  google_maps_uri: result.google_maps_uri,
-  place_photo_p: result.place_photo_p,
-});
+/** Street/local line only: drop 21000 and trailing Split / Croatia. */
+const formatAddressForDisplay = (address: string): string => {
+  const original = address.trim();
+  if (!original) return address;
+
+  let s = original.replace(/\b21000\b/gi, "");
+  const tidy = (x: string): string =>
+    x
+      .replace(/,\s*,/g, ",")
+      .replace(/\s{2,}/g, " ")
+      .replace(/\s*,\s*/g, ", ")
+      .replace(/^[\s,]+|[\s,]+$/g, "");
+
+  s = tidy(s);
+
+  const suffixRes = [
+    /,\s*Republic\s+of\s+Croatia\s*$/i,
+    /,\s*Croatia\s*$/i,
+    /,\s*Hrvatska\s*$/i,
+    /,\s*Split\s*$/i,
+  ];
+
+  let changed = true;
+  while (changed) {
+    changed = false;
+    for (const re of suffixRes) {
+      const next = s.replace(re, "");
+      if (next !== s) {
+        s = tidy(next);
+        changed = true;
+        break;
+      }
+    }
+  }
+
+  const loneSplit = /^Split$/i.test(s);
+  if (s.length === 0 || loneSplit) return "";
+
+  return s;
+};
+
+const toCafe = (result: MapPayloadResult): Cafe => {
+  const streetLine = formatAddressForDisplay(result.address).trim()
+  const fallbackArea =
+    typeof result.area === "string" && result.area.trim()
+      ? result.area.trim()
+      : ""
+  return {
+    id: result.id,
+    name: result.name,
+    neighborhood:
+      streetLine.length > 0 ? streetLine : fallbackArea,
+    blurb: result.exposure.summary,
+    lng: result.terrace_point.lng,
+    lat: result.terrace_point.lat,
+    google_maps_uri: result.google_maps_uri,
+    place_photo_p: result.place_photo_p,
+  }
+};
 
 const toTimeline = (result: MapPayloadResult): TimelinePoint[] =>
   result.exposure.samples.map((sample) => ({
