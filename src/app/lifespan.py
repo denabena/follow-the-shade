@@ -26,6 +26,7 @@ async def lifespan(app: FastAPI):
     analysis_store = InMemoryAnalysisStore(ttl_seconds=settings.SESSION_TTL_SECONDS)
     tool = FindSplitCafeSunShadeTool(
         analysis_store=analysis_store,
+        settings=settings,
         seed_path=settings.SPLIT_CAFE_SEED_PATH,
     )
     agent = FollowTheShadeAgent(tool=tool)

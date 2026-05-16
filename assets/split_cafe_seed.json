@@ -134,5 +134,48 @@
       "lunch": ["sun", "sun", "sun"],
       "afternoon": ["sun", "sun", "sun", "shade", "shade"]
     }
+  },
+  {
+    "id": "seed:caffe-bar-st-riva",
+    "name": "Caffe Bar St. Riva",
+    "area": "Riva",
+    "provider": "demo_seed",
+    "location": { "lat": 43.507573, "lng": 16.439327 },
+    "terrace_point": { "lat": 43.507573, "lng": 16.439327 },
+    "address": "Riva, Split",
+    "outdoor_seating_confidence": "high",
+    "google_maps_uri": "https://maps.app.goo.gl/HR3H38TeoV1ADspF8"
+  },
+  {
+    "id": "seed:demeat-pizza",
+    "name": "Demeat Pizza",
+    "area": "Riva",
+    "provider": "demo_seed",
+    "location": { "lat": 43.508453, "lng": 16.43665 },
+    "terrace_point": { "lat": 43.508453, "lng": 16.43665 },
+    "address": "Near Riva, Split",
+    "outdoor_seating_confidence": "high"
+  },
+  {
+    "id": "seed:antique-bar",
+    "name": "Antique Bar",
+    "area": "Riva",
+    "provider": "demo_seed",
+    "location": { "lat": 43.508314, "lng": 16.437086 },
+    "terrace_point": { "lat": 43.508314, "lng": 16.437086 },
+    "address": "Riva, Split",
+    "outdoor_seating_confidence": "high",
+    "google_maps_uri": "https://maps.app.goo.gl/5zaHcbRzMytidPy18"
+  },
+  {
+    "id": "seed:cafe-romana",
+    "name": "Cafe Romana",
+    "area": "Riva",
+    "provider": "demo_seed",
+    "location": { "lat": 43.507767, "lng": 16.438619 },
+    "terrace_point": { "lat": 43.507767, "lng": 16.438619 },
+    "address": "Riva, Split",
+    "outdoor_seating_confidence": "high",
+    "google_maps_uri": "https://maps.app.goo.gl/YLdby2FEtiaiXstN8"
   }
 ]
