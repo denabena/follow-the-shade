@@ -215,8 +215,14 @@ class FollowTheShadePipeline:
         self._thread_context: dict[str, ParsedRequest] = {}
         self._thread_context_lock = Lock()
 
-    async def run(self, *, query: str, thread_id: str) -> dict[str, Any]:
-        parsed = self.parse_request(query)
+    async def run(
+        self,
+        *,
+        query: str,
+        thread_id: str,
+        venue_types: list[str] | tuple[str, ...] | None = None,
+    ) -> dict[str, Any]:
+        parsed = self.parse_request(query, venue_types=venue_types)
 
         if not parsed.outside_split:
             parsed = self._merge_with_thread_context(thread_id, parsed)
@@ -296,9 +302,7 @@ class FollowTheShadePipeline:
                 height_estimated=height_estimated,
             )
             exposure = _weather_adjusted_exposure(exposure, parsed, weather)
-            results.append(
-                self._build_result(venue, terrace, exposure, parsed, weather)
-            )
+            results.append(self._build_result(venue, terrace, exposure, parsed, weather))
 
         ranked = sorted(
             results,
@@ -709,11 +713,20 @@ class FollowTheShadePipeline:
         with self._thread_context_lock:
             self._thread_context[thread_id] = parsed
 
-    def parse_request(self, query: str, now: datetime | None = None) -> ParsedRequest:
+    def parse_request(
+        self,
+        query: str,
+        now: datetime | None = None,
+        venue_types: list[str] | tuple[str, ...] | None = None,
+    ) -> ParsedRequest:
         normalized = self._normalize(query)
         now_zagreb = (now or datetime.now(ZAGREB_TZ)).astimezone(ZAGREB_TZ)
         language: Language = "en"
-        venue_types, venue_explicit = _parse_venue_types(normalized)
+        parsed_venue_types, venue_explicit = _parse_venue_types(normalized)
+        forced_venue_types = _normalize_requested_venue_types(venue_types)
+        if forced_venue_types:
+            parsed_venue_types = forced_venue_types
+            venue_explicit = True
         preference, preference_explicit = _parse_preference(normalized)
         area, location_explicit = _find_area(normalized)
         date_anchor, date_explicit = _parse_date(normalized, now_zagreb)
@@ -732,7 +745,7 @@ class FollowTheShadePipeline:
                 date_anchor=date_anchor,
                 must_be_open=True,
                 language=language,
-                venue_types=venue_types,
+                venue_types=parsed_venue_types,
                 outside_split=True,
                 venue_explicit=venue_explicit,
                 preference_explicit=preference_explicit,
@@ -753,7 +766,7 @@ class FollowTheShadePipeline:
                 date_anchor=date_anchor,
                 must_be_open=True,
                 language=language,
-                venue_types=venue_types,
+                venue_types=parsed_venue_types,
                 needs_clarification=True,
                 clarification=(
                     "What time window should I check? For example: today from "
@@ -777,7 +790,7 @@ class FollowTheShadePipeline:
             date_anchor=date_anchor,
             must_be_open=True,
             language=language,
-            venue_types=venue_types,
+            venue_types=parsed_venue_types,
             venue_explicit=venue_explicit,
             preference_explicit=preference_explicit,
             location_explicit=location_explicit,
@@ -1044,7 +1057,7 @@ def _parse_venue_types(query: str) -> tuple[tuple[VenueType, ...], bool]:
     if re.search(r"\b(cafe|cafes|caffe|coffee|kava|espresso)\b", query):
         add("cafe")
     if re.search(
-        r"\b(restaurant|restaurants|konoba|konobe|dinner|meal|food|eat|pizza|pizzeria)\b",
+        r"\b(restaurant|restaurants|konoba|konobe|dinner|pizza|pizzeria|bistro|grill)\b",
         query,
     ):
         add("restaurant")
@@ -1054,6 +1067,37 @@ def _parse_venue_types(query: str) -> tuple[tuple[VenueType, ...], bool]:
         add("night_club")
 
     return tuple(venue_types) if venue_types else DEFAULT_VENUE_TYPES, bool(venue_types)
+
+
+def _normalize_requested_venue_types(
+    values: list[str] | tuple[str, ...] | None,
+) -> tuple[VenueType, ...] | None:
+    if not values:
+        return None
+
+    normalized: list[VenueType] = []
+    aliases: dict[str, VenueType] = {
+        "cafe": "cafe",
+        "cafes": "cafe",
+        "coffee": "cafe",
+        "restaurant": "restaurant",
+        "restaurants": "restaurant",
+        "bar": "bar",
+        "bars": "bar",
+        "pub": "bar",
+        "pubs": "bar",
+        "night_club": "night_club",
+        "nightclub": "night_club",
+        "nightclubs": "night_club",
+        "club": "night_club",
+        "clubs": "night_club",
+    }
+    for value in values:
+        key = FollowTheShadePipeline._normalize(str(value)).replace(" ", "_")
+        venue_type = aliases.get(key)
+        if venue_type and venue_type not in normalized:
+            normalized.append(venue_type)
+    return tuple(normalized) if normalized else None
 
 
 def _venue_phrase(venue_types: tuple[VenueType, ...]) -> str:

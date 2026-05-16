@@ -1,7 +1,7 @@
 import json
 from dataclasses import asdict, is_dataclass
 from datetime import datetime
-from typing import Any
+from typing import Any, Literal
 
 from langchain_core.tools import BaseTool
 from pydantic import BaseModel, Field
@@ -16,6 +16,14 @@ class ParseSplitRequestInput(BaseModel):
     query: str = Field(
         ...,
         description="Natural-language Split venue request to parse into slots.",
+    )
+    venue_types: list[Literal["cafe", "restaurant", "bar", "night_club"]] | None = Field(
+        default=None,
+        description=(
+            "Optional exact venue categories requested by the user. Pass ['bar'] for bars, pubs, cocktails, wine, beer, or drinks; "
+            "['night_club'] for clubs/nightlife/dancing; ['restaurant'] for restaurants, konoba, dinner, pizza, bistro, or grill; "
+            "['cafe'] for cafes or coffee. Omit only when the user did not specify a category."
+        ),
     )
 
 
@@ -53,23 +61,35 @@ class ParseSplitRequestTool(BaseTool):
             cache=upstream_cache,
         )
 
-    def _run(self, query: str) -> str:
-        return self._parse(query)
+    def _run(
+        self,
+        query: str,
+        venue_types: list[str] | None = None,
+    ) -> str:
+        return self._parse(query, venue_types=venue_types)
 
-    async def _arun(self, query: str) -> str:
-        return self._parse(query)
+    async def _arun(
+        self,
+        query: str,
+        venue_types: list[str] | None = None,
+    ) -> str:
+        return self._parse(query, venue_types=venue_types)
 
-    def _parse(self, query: str) -> str:
-        parsed = self.pipeline.parse_request(query)
+    def _parse(
+        self,
+        query: str,
+        venue_types: list[str] | None = None,
+    ) -> str:
+        parsed = self.pipeline.parse_request(query, venue_types=venue_types)
         return json.dumps(
             _parsed_to_dict(parsed), ensure_ascii=False, default=_json_default
         )
 
 
 def _parsed_to_dict(parsed: Any) -> dict[str, Any]:
-    if is_dataclass(parsed):
+    if is_dataclass(parsed) and not isinstance(parsed, type):
         data = asdict(parsed)
-    elif hasattr(parsed, "model_dump"):
+    elif not isinstance(parsed, type) and hasattr(parsed, "model_dump"):
         data = parsed.model_dump()
     else:
         data = dict(parsed.__dict__)
@@ -103,7 +123,9 @@ def _parsed_to_dict(parsed: Any) -> dict[str, Any]:
     data["tool_query_guidance"] = (
         "Use canonical ASCII area names in follow-up and analysis tool queries. "
         "For Bačvice/bačvice, write Bacvice. Do not add Riva as a fallback when "
-        "the parsed or carried location is another explicit Split area."
+        "the parsed or carried location is another explicit Split area. If "
+        "venue_types is explicit or carried from history, pass the same venue_types "
+        "argument to find_split_cafe_sun_shade; never replace bar or night_club with restaurant."
     )
     return data
 

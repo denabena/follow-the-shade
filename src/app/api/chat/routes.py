@@ -301,6 +301,15 @@ async def chat_final_answer(
             detail="The Follow the Shade chat agent is not initialized.",
         )
 
+    outside_split_response = await _outside_split_response_if_applicable(
+        message=message,
+        thread_id=chat_request.thread_id,
+        state=state,
+        include_audio=chat_request.include_audio,
+    )
+    if outside_split_response is not None:
+        return outside_split_response
+
     active_agent = _select_agent(message, state, user_id)
     user_id_token = current_user_id.set(user_id)
     try:
@@ -328,6 +337,38 @@ async def chat_final_answer(
         analysis_id=result.analysis_id,
         map_payload=result.map_payload,
         sources=result.sources,
+        audio=audio,
+        detected_language=SONIOX_LANGUAGE,
+    )
+
+
+async def _outside_split_response_if_applicable(
+    *,
+    message: str,
+    thread_id: str,
+    state: AppState,
+    include_audio: bool,
+) -> ChatResponse | None:
+    analysis_tool = state.analysis_tool
+    if analysis_tool is None or not hasattr(analysis_tool, "parse_request"):
+        return None
+
+    parsed = analysis_tool.parse_request(message)
+    if not getattr(parsed, "outside_split", False):
+        return None
+
+    result = await analysis_tool.run_pipeline(query=message, thread_id=thread_id)
+    answer = str(result.get("answer") or "").strip()
+    audio = None
+    if include_audio:
+        audio = await _generate_soniox_tts(answer=answer, language=SONIOX_LANGUAGE)
+
+    return ChatResponse(
+        answer=answer,
+        thread_id=thread_id,
+        analysis_id=result.get("analysis_id"),
+        map_payload=result.get("map_payload"),
+        sources=result.get("sources", []),
         audio=audio,
         detected_language=SONIOX_LANGUAGE,
     )

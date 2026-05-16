@@ -59,13 +59,13 @@ def test_final_answer_returns_map_payload() -> None:
             "/chat/final_answer",
             json={
                 "message": "Find me a shady cafe outside near Riva today from 3 to 5pm.",
-                "thread_id": "test-thread",
+                "thread_id": "map-payload-thread",
             },
         )
 
     payload = response.json()
     assert response.status_code == 200
-    assert payload["thread_id"] == "test-thread"
+    assert payload["thread_id"] == "map-payload-thread"
     assert payload["analysis_id"]
     assert payload["map_payload"]["request"]["preference"] == "shade"
     assert payload["map_payload"]["results"]
@@ -98,7 +98,7 @@ def test_between_and_time_window_returns_map_payload() -> None:
             "/chat/final_answer",
             json={
                 "message": "I want a cafe in the sun on the Riva between 3 and 5pm today.",
-                "thread_id": "test-thread",
+                "thread_id": "between-window-thread",
             },
         )
 
@@ -140,7 +140,7 @@ def test_analysis_recovery_returns_saved_payload() -> None:
             "/chat/final_answer",
             json={
                 "message": "I want sun around Bacvice tomorrow morning.",
-                "thread_id": "test-thread",
+                "thread_id": "analysis-recovery-thread",
             },
         ).json()
         response = client.get(f"/chat/analysis/{chat['analysis_id']}")
@@ -164,7 +164,7 @@ def test_outside_split_redirect_has_no_map_payload() -> None:
             "/chat/final_answer",
             json={
                 "message": "Find me shade on Tkalciceva today from 3 to 5pm.",
-                "thread_id": "test-thread",
+                "thread_id": "outside-split-thread",
             },
         )
 
@@ -181,7 +181,7 @@ def test_missing_time_asks_clarifying_question() -> None:
             "/chat/final_answer",
             json={
                 "query": "I want a shady cafe near Marmontova.",
-                "thread_id": "test-thread",
+                "thread_id": "missing-time-thread",
             },
         )
 

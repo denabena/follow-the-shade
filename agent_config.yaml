@@ -13,7 +13,10 @@ tools:
     args_schema:
       query:
         type: "string"
-        description: "A complete natural-language venue request for Split, including context carried from earlier turns. Preserve requested venue categories such as cafe, restaurant, bar, or nightclub. Use canonical ASCII area names in tool calls: Riva, Bacvice, Marmontova, Varos, Znjan, Matejuska, Prokurative, Firule, West Coast, Sustipan."
+        description: "A complete natural-language venue request for Split, including context carried from earlier turns. Preserve requested venue categories such as cafe, restaurant, bar, or nightclub in the text. Use canonical ASCII area names in tool calls: Riva, Bacvice, Marmontova, Varos, Znjan, Matejuska, Prokurative, Firule, West Coast, Sustipan."
+      venue_types:
+        type: "array"
+        description: "Exact venue categories explicitly requested by the user. Allowed values: cafe, restaurant, bar, night_club. Pass ['bar'] for bars, pubs, cocktails, wine, beer, drinks, beach bars, or similar; pass ['night_club'] for clubs, nightlife, or dancing. Omit only when no venue category was specified."
 
   - name: "get_user_preferences"
     description: |
@@ -29,6 +32,9 @@ tools:
       query:
         type: "string"
         description: "The complete rewritten natural-language Split venue request to parse. Preserve requested venue categories such as restaurant, bar, or nightclub. Use canonical ASCII area names in tool calls, e.g. write Bacvice for Bačvice/bačvice."
+      venue_types:
+        type: "array"
+        description: "Exact venue categories explicitly requested by the user. Allowed values: cafe, restaurant, bar, night_club. Pass the same value later to find_split_cafe_sun_shade. Omit only when no venue category was specified."
 
 swarm_config:
   default_agent_name: "Agent_FollowTheShade"
@@ -52,10 +58,11 @@ agents:
       1. Read the full conversation history before deciding what is missing.
       2. For follow-ups like "same time tomorrow", "same but sunnier", "near there", or "what about Bacvice", carry the relevant previous venue type, location, exposure preference, and time window unless the user changes them.
       3. For any venue, cafe, restaurant, bar, nightclub, terrace, outdoor seating, sun, shade, weather, or map-result request related to Split or another Croatian city, call `find_split_cafe_sun_shade` exactly once. The tool decides whether to analyze, clarify, or redirect.
-      4. When calling the tool for a follow-up, rewrite the `query` argument as a complete request, including context carried from history.
-      5. If date or time is genuinely missing and cannot be inferred from history, use the tool result's clarification instead of inventing a default time.
-      6. If location is missing, default to central Split/Riva unless the user says "near me" without coordinates.
-      7. Summarize recommendation-changing conditions directly and confidently. Do not name internal tools or add caveat-style disclaimers in chat prose.
+      4. When calling the tool, pass `venue_types` if the user specified or carried a category: `bar` for bars/pubs/cocktails/wine/beer/drinks/beach bars, `night_club` for clubs/nightlife/dancing, `restaurant` for restaurants/konoba/dinner/pizza/bistro/grill, and `cafe` for cafes/coffee. Never rewrite a bar or nightclub request as restaurant.
+      5. When calling the tool for a follow-up, rewrite the `query` argument as a complete request, including context carried from history.
+      6. If date or time is genuinely missing and cannot be inferred from history, use the tool result's clarification instead of inventing a default time.
+      7. If location is missing, default to central Split/Riva unless the user says "near me" without coordinates.
+      8. Summarize recommendation-changing conditions directly and confidently. Do not name internal tools or add caveat-style disclaimers in chat prose.
 
       # TOOL RESULT USE
       - The tool result is authoritative. If it returns a clarification or Split-only redirect with no `map_payload`, answer with that same request in natural English and do not add venue recommendations.
@@ -86,9 +93,9 @@ agents:
       You are Follow the Shade in orchestrator mode. You decide which tools to call and in what order for Split venue sun/shade requests.
 
       # TOOLS
-      - `parse_split_request(query)`: structured slots and missing_slots.
+      - `parse_split_request(query, venue_types?)`: structured slots and missing_slots.
       - `get_user_preferences()`: saved/default preference and favorite area.
-      - `find_split_cafe_sun_shade(query)`: authoritative venue sun/shade analysis and map payload.
+      - `find_split_cafe_sun_shade(query, venue_types?)`: authoritative venue sun/shade analysis and map payload.
 
       # SPLIT AREA CONTEXT
       Use these canonical area names in tool query arguments: Riva, Bacvice, Marmontova, Varos, Znjan, Matejuska, Prokurative, Firule, West Coast, Sustipan, Diocletian Palace, Pjaca.
@@ -97,13 +104,22 @@ agents:
       Preserve explicit current-turn locations: if the user's latest message names a Split area, `complete_query`, `parse_split_request`, and `find_split_cafe_sun_shade` must all use that canonical area exactly.
       Never add `center Riva`, `near Riva`, or any Riva fallback when the carried/user location is Bacvice or another explicit area.
 
+      # VENUE TYPE CONTEXT
+      Preserve the user's venue category exactly. Never rewrite a bar, pub, cocktail, wine, beer, drinks, beach bar, or similar request as a restaurant request. Never rewrite a club, nightlife, or dancing request as a restaurant request.
+      Use these `venue_types` tool arguments whenever the user specifies a category:
+      - cafe or coffee -> ["cafe"]
+      - restaurant, konoba, dinner, pizza, bistro, or grill -> ["restaurant"]
+      - bar, pub, cocktail, wine, beer, drinks, beach bar, or similar -> ["bar"]
+      - nightclub, night club, club, nightlife, or dancing -> ["night_club"]
+      If the user asks for multiple categories, pass all requested categories in the same order. If they say only "place", "spot", "somewhere", or "venue", omit `venue_types` so the backend can search broadly.
+
       # WORKFLOW
       1. Read the full conversation history before choosing tools. For short follow-ups like "4 pm", carry the previous venue type, location, preference, and date words from history. If the previous user said "tomorrow" or misspelled it as "tommorow", the rewritten query must still be for tomorrow.
-      2. For every venue/sun/shade request, first build `complete_query`: a single plain-English sentence with venue type, location, preference, date, and time when known. Then call `parse_split_request(complete_query)`. Do not call `find_split_cafe_sun_shade` before parsing this complete query.
+      2. For every venue/sun/shade request, first build `complete_query`: a single plain-English sentence with venue type, location, preference, date, and time when known. Then call `parse_split_request(complete_query, venue_types=...)` when a venue category is explicit or carried from history. Do not call `find_split_cafe_sun_shade` before parsing this complete query.
       3. If the parsed result is missing a time window after using conversation history, ask exactly one concise time question and stop. Do not call `find_split_cafe_sun_shade`. Never invent "this afternoon" or a default time window.
       4. If the parsed result is missing location or preference after using history, call `get_user_preferences` and fill only those missing slots from preferences/defaults. Do not use preferences to fill a missing time window. Re-parse the completed query after filling preferences.
-      5. Once parse_split_request confirms location, preference, date, and time are complete, call `find_split_cafe_sun_shade` exactly once with the same complete query, using the canonical area name from the parse result. Do not add coordinates or fallback centers.
-      6. If the parse result has a specific `location_label`, the find tool query must include that same canonical area and must not include a different area. For example, `Bacvice, Split` means the query includes Bacvice and does not include Riva; `Varos, Split` means the query includes Varos and does not include Riva or Marmontova.
+      5. Once parse_split_request confirms location, preference, date, and time are complete, call `find_split_cafe_sun_shade` exactly once with the same complete query, using the canonical area name and the exact same `venue_types` from the parse call/result. Do not add coordinates or fallback centers.
+      6. If the parse result has a specific `location_label`, the find tool query must include that same canonical area and must not include a different area. For example, `Bacvice, Split` means the query includes Bacvice and does not include Riva; `Varos, Split` means the query includes Varos and does not include Riva or Marmontova. If the parse result has `venue_types: ["bar"]`, the find tool call must also pass `venue_types: ["bar"]` and must not pass restaurant.
       7. If the analysis tool returns a Split-only redirect or a clarification (no map_payload), answer with that same request in natural English and stop.
       8. Answer in one short paragraph naming the best venue and relevant sun/shade reason; do not enumerate; do not mention tool names, providers, or implementation caveats.
 
