@@ -6,7 +6,11 @@ const atTodayLocal = (hours: number, minutes: number): Date => {
   return d
 }
 
-export type SuggestionId = "sun-riva" | "shade-varos" | "sun-marmontova"
+export type SuggestionId =
+  | "sun-riva"
+  | "shade-varos"
+  | "sun-marmontova"
+  | "shade-bacvice"
 
 export type Suggestion = {
   id: SuggestionId
@@ -25,6 +29,10 @@ export const suggestions: Suggestion[] = [
   {
     id: "sun-marmontova",
     utterance: "Sunny terrace around Marmontova at noon."
+  },
+  {
+    id: "shade-bacvice",
+    utterance: "Find me a shady spot near Bacvice around 4pm."
   }
 ]
 
@@ -56,6 +64,21 @@ export const intentForSuggestion = (id: SuggestionId): IntentRequest => {
         center: [16.43655, 43.50915],
         radiusM: 320,
         zoom: 17
+      }
+    }
+  }
+  if (id === "shade-bacvice") {
+    return {
+      id,
+      utterance: suggestions[3].utterance,
+      preference: "shade",
+      windowStart: atTodayLocal(16, 0),
+      windowEnd: atTodayLocal(17, 30),
+      area: {
+        name: "Bacvice",
+        center: [16.4513, 43.5056],
+        radiusM: 330,
+        zoom: 16.7
       }
     }
   }

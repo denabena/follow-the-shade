@@ -1,6 +1,6 @@
 "use client"
 
-import { UserButton } from "@clerk/nextjs"
+import { useAuth } from "@clerk/nextjs"
 import Link from "next/link"
 import { useEffect, useRef, useState } from "react"
 import type { Cafe } from "@/lib/types"
@@ -63,9 +63,11 @@ const ChatPanel = ({
   onStreamComplete,
   onCafeSelect
 }: Props) => {
+  const { userId } = useAuth()
   const [draft, setDraft] = useState("")
   const [speechError, setSpeechError] = useState<string | null>(null)
   const [listening, setListening] = useState(false)
+  const [now, setNow] = useState(() => new Date())
   const scrollerRef = useRef<HTMLDivElement>(null)
   const recognitionRef = useRef<SpeechRecognitionLike | null>(null)
 
@@ -74,6 +76,19 @@ const ChatPanel = ({
     if (!el) return
     el.scrollTo({ top: el.scrollHeight, behavior: "smooth" })
   }, [messages])
+
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      setNow(new Date())
+    }, 30000)
+    return () => window.clearInterval(timer)
+  }, [])
+
+  const dayTimeLabel = new Intl.DateTimeFormat(undefined, {
+    weekday: "long",
+    hour: "2-digit",
+    minute: "2-digit"
+  }).format(now)
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
@@ -177,7 +192,7 @@ const ChatPanel = ({
         className
       )}
     >
-      <Header />
+      <Header dayTimeLabel={dayTimeLabel} signedIn={Boolean(userId)} />
 
       <div
         ref={scrollerRef}
@@ -206,7 +221,7 @@ const ChatPanel = ({
               onClick={() => onSuggestion(s.id)}
               disabled={busy}
               className={cn(
-                "group rounded-full border border-terracotta/40 bg-bone-soft px-3.5 py-2 text-[12.5px] leading-tight text-ink",
+                "group cursor-pointer rounded-full border border-terracotta/40 bg-bone-soft px-3.5 py-2 text-[12.5px] leading-tight text-ink",
                 "transition-all hover:-translate-y-0.5 hover:border-terracotta hover:bg-bone-deep",
                 "disabled:cursor-not-allowed disabled:opacity-50"
               )}
@@ -251,7 +266,7 @@ const ChatPanel = ({
             aria-pressed={listening}
             onClick={handleSpeechClick}
             className={cn(
-              "grid h-10 w-10 shrink-0 place-items-center rounded-full border text-ink transition-all",
+              "grid h-10 w-10 shrink-0 cursor-pointer place-items-center rounded-full border text-ink transition-all",
               listening
                 ? "border-terracotta bg-terracotta text-bone shadow-[0_0_0_6px_rgba(199,107,69,0.12)]"
                 : "border-ink/35 hover:border-terracotta hover:text-terracotta",
@@ -265,7 +280,7 @@ const ChatPanel = ({
             disabled={!draft.trim() || busy}
             aria-label="Send message"
             className={cn(
-              "inline-flex h-10 shrink-0 items-center justify-center rounded-full border border-ink px-5 text-[12.5px] font-medium uppercase tracking-[0.16em] text-ink",
+              "inline-flex h-10 shrink-0 cursor-pointer items-center justify-center rounded-full border border-ink px-5 text-[12.5px] font-medium uppercase tracking-[0.16em] text-ink",
               "transition-all hover:bg-ink hover:text-bone",
               "disabled:cursor-not-allowed disabled:border-ink/30 disabled:text-ink/30 disabled:hover:bg-transparent"
             )}
@@ -283,11 +298,17 @@ const ChatPanel = ({
   )
 }
 
-const Header = () => (
+const Header = ({
+  dayTimeLabel,
+  signedIn
+}: {
+  dayTimeLabel: string
+  signedIn: boolean
+}) => (
   <header className="relative z-[2] flex items-start justify-between gap-4 px-7 pb-3 pt-7 sm:px-10">
     <div>
       <p className="font-mono text-[10px] uppercase tracking-[0.32em] text-terracotta-deep">
-        Split · sun &amp; shade
+        Split · {dayTimeLabel}
       </p>
       <h1 className="font-display text-[34px] leading-[1.05] tracking-tight text-ink">
         Follow the Shade
@@ -295,12 +316,11 @@ const Header = () => (
     </div>
     <div className="flex shrink-0 items-center gap-3 pt-1">
       <Link
-        href="/settings"
-        className="text-[11px] font-medium uppercase tracking-[0.14em] text-ink/55 hover:text-ink"
+        href={signedIn ? "/settings" : "/sign-in"}
+        className="rounded-full border border-ink/25 px-3 py-1.5 text-[10.5px] font-medium uppercase tracking-[0.12em] text-ink/72 transition-colors hover:border-ink/40 hover:text-ink"
       >
-        prefs
+        {signedIn ? "Preferences" : "Sign up"}
       </Link>
-      <UserButton />
     </div>
   </header>
 )

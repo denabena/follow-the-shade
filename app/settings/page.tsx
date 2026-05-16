@@ -49,8 +49,8 @@ export default function SettingsPage() {
   }
 
   return (
-    <main className="mx-auto max-w-lg px-6 py-10 text-ink">
-      <header className="mb-8 flex items-center justify-between">
+    <main className="mx-auto flex min-h-screen max-w-lg flex-col justify-center px-6 py-8 text-ink">
+      <header className="mb-6 flex items-center justify-between">
         <SettingsTitle />
         <UserButton />
       </header>
@@ -149,7 +149,7 @@ function SettingsTitle() {
       <a href="/" className="text-sm text-terracotta-deep hover:underline">
         ← Back to app
       </a>
-      <h1 className="font-display mt-2 text-3xl">Your preferences</h1>
+      <h1 className="font-display mt-1 text-3xl">Your preferences</h1>
     </div>
   );
 }

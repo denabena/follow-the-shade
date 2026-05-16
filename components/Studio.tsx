@@ -9,6 +9,7 @@ import {
   intentFromMapPayload,
   resultsFromMapPayload
 } from "@/lib/map-payload-adapter"
+import backgroundImage from "@/assets/background.png"
 import ChatPanel from "./ChatPanel"
 import MapPanel, { type MapPanelHandle } from "./MapPanel"
 import type { ChatMessageData } from "./ChatMessage"
@@ -130,6 +131,19 @@ const Studio = () => {
 
   return (
     <div className="relative h-screen w-full overflow-hidden bg-bone">
+      <div
+        aria-hidden="true"
+        className={[
+          "pointer-events-none absolute inset-0 z-[1] transition-opacity duration-700 ease-out",
+          mapActive ? "opacity-0" : "opacity-[0.06]"
+        ].join(" ")}
+      >
+        <img
+          src={backgroundImage.src}
+          alt=""
+          className="h-full w-full object-cover object-center"
+        />
+      </div>
       <div
         aria-hidden="true"
         className="pointer-events-none absolute inset-0 overflow-hidden"

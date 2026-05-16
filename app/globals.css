@@ -44,6 +44,16 @@ body {
   text-rendering: optimizeLegibility;
 }
 
+a:hover,
+button:hover,
+[role="button"]:hover,
+input[type="button"]:hover,
+input[type="submit"]:hover,
+input[type="reset"]:hover,
+summary:hover {
+  cursor: pointer;
+}
+
 .font-display {
   font-family: var(--font-fraunces), ui-serif, Georgia, serif;
   font-feature-settings: "ss01", "ss02", "ss03";
