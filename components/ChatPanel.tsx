@@ -111,19 +111,6 @@ const ChatPanel = ({
   const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
 
   useEffect(() => {
-    const el = scrollerRef.current;
-    if (!el) return;
-    el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
-  }, [messages]);
-
-  useEffect(() => {
-    const timer = window.setInterval(() => {
-      setNow(new Date());
-    }, 30000);
-    return () => window.clearInterval(timer);
-  }, []);
-
-  useEffect(() => {
     const el = textareaRef.current;
     if (!el) return;
     el.style.height = "0px";
@@ -136,6 +123,19 @@ const ChatPanel = ({
       el.style.overflowY = "auto";
     }
   }, [draft, busy, listening]);
+
+  useEffect(() => {
+    const el = scrollerRef.current;
+    if (!el) return;
+    el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
+  }, [messages, busy]);
+
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      setNow(new Date());
+    }, 30000);
+    return () => window.clearInterval(timer);
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -404,12 +404,12 @@ const ChatPanel = ({
             disabled={busy}
             placeholder={
               listening
-                ? "listening…"
+                ? "Listening…"
                 : busy
-                  ? "checking shadows…"
-                  : "Tell me where & when, and whether you want sun or shade"
+                  ? "Checking shadows…"
+                  : "Where & when - sun or shade?"
             }
-            aria-label="Message"
+            aria-label="Where and when, sun or shade"
             className={cn(
               "min-h-[44px] max-h-32 flex-1 resize-none bg-transparent py-2.5 text-[15px] leading-5 text-ink outline-none placeholder:text-ink/35",
               "disabled:opacity-60",

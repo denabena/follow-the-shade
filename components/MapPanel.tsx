@@ -272,9 +272,9 @@ const addCafeRouteToMap = (map: MapboxMap) => {
     source: CAFE_ROUTE_SOURCE_ID,
     slot: "middle",
     paint: {
-      "line-color": "#a8542f",
+      "line-color": "#0e2a3d",
       "line-width": 6,
-      "line-opacity": 0.35,
+      "line-opacity": 0.32,
       "line-occlusion-opacity": 0,
       "line-blur": 0.5,
     },
@@ -285,9 +285,9 @@ const addCafeRouteToMap = (map: MapboxMap) => {
     source: CAFE_ROUTE_SOURCE_ID,
     slot: "middle",
     paint: {
-      "line-color": "#c76b45",
+      "line-color": "#0e2a3d",
       "line-width": 3,
-      "line-opacity": 1,
+      "line-opacity": 0.88,
       "line-occlusion-opacity": 0,
     },
   })
