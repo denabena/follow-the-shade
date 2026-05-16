@@ -1,36 +1,133 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Follow the Shade
 
-## Getting Started
+Follow the Shade is a Split-only outdoor cafe finder. Users ask naturally, for example: "Find me a shady cafe outside near Riva today from 3 to 5pm." The backend returns conversational advice plus a typed `map_payload` that the frontend renders as map markers, result cards, and sun/shade timelines.
 
-First, run the development server:
+## Architecture
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+```text
+Next.js frontend
+	-> POST /chat/final_answer
+	-> FastAPI backend
+	-> FollowTheShadeAgent
+	-> find_split_cafe_sun_shade composite tool
+	-> map_payload + analysis_id
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+The MVP keeps one agent and one deterministic tool. External APIs sit behind cache-aware source templates so frontend development can use mock data without paying for or waiting on real calls.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Modes
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+There are two separate toggles:
 
-## Learn More
+| Variable | Layer | Use |
+|----------|-------|-----|
+| `FOLLOW_THE_SHADE_USE_MOCK=true` | Next route handlers | Return the local TypeScript mock response. |
+| `FOLLOW_THE_SHADE_USE_MOCK=false` | Next route handlers | Proxy `/chat/...` routes to FastAPI. |
+| `FOLLOW_THE_SHADE_DATA_MODE=mock` | Python backend | Use seed cafe data and mocked weather/building notes. |
+| `FOLLOW_THE_SHADE_DATA_MODE=actual` | Python backend | Attempt Google Places, Overpass, and Open-Meteo calls, with seed fallbacks. |
 
-To learn more about Next.js, take a look at the following resources:
+Default for frontend work:
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```env
+FOLLOW_THE_SHADE_USE_MOCK=true
+FOLLOW_THE_SHADE_DATA_MODE=mock
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Proxy Next to Python while keeping deterministic backend data:
 
-## Deploy on Vercel
+```env
+FOLLOW_THE_SHADE_USE_MOCK=false
+FOLLOW_THE_SHADE_API_BASE_URL=http://127.0.0.1:8000
+FOLLOW_THE_SHADE_DATA_MODE=mock
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+Exercise backend API templates:
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```env
+FOLLOW_THE_SHADE_USE_MOCK=false
+FOLLOW_THE_SHADE_API_BASE_URL=http://127.0.0.1:8000
+FOLLOW_THE_SHADE_DATA_MODE=actual
+FOLLOW_THE_SHADE_CACHE_TTL_SECONDS=600
+```
+
+## Run Locally
+
+Install frontend dependencies:
+
+```powershell
+npm install
+```
+
+Run the Python backend:
+
+```powershell
+uv run uvicorn app.main:app --app-dir src --reload --host 127.0.0.1 --port 8000
+```
+
+Run the Next app:
+
+```powershell
+npm run dev
+```
+
+Useful URLs:
+
+- Next app: `http://localhost:3000`
+- HTML reference: `http://localhost:3000/agent-reference.html`
+- Backend health: `http://127.0.0.1:8000/health`
+- Backend docs: `http://127.0.0.1:8000/docs`
+
+## API Contract
+
+Primary request:
+
+```json
+{
+	"message": "Find me a shady cafe outside near Riva today from 3 to 5pm.",
+	"thread_id": "stable-session-id",
+	"include_audio": false
+}
+```
+
+Primary response:
+
+```json
+{
+	"answer": "Assistant prose",
+	"thread_id": "stable-session-id",
+	"analysis_id": "shade_20260516_abcd1234",
+	"map_payload": {},
+	"sources": [],
+	"audio": null,
+	"detected_language": "en"
+}
+```
+
+Frontend rule: render cafe names, coordinates, scores, and timelines only from `map_payload`. Do not parse assistant prose for cafe data.
+
+## Fallbacks
+
+The backend should degrade gracefully:
+
+- Missing or failed Google Places: seed cafes now, OSM cafe fallback later.
+- Few cafes with outdoor evidence: supplement with seed/OSM and lower `outdoor_seating.confidence`.
+- Missing building geometry: return results with lower exposure confidence.
+- Missing building heights: use OSM `height`, then `building:levels * 3`, then 9m default once geometry is live.
+- Missing weather: leave weather fields `null` and keep the answer focused on direct sun/shade.
+
+See `BACKEND.md` for the full fallback and caching requirements.
+
+## Verification
+
+Backend tests:
+
+```powershell
+uv run pytest
+```
+
+Frontend checks:
+
+```powershell
+npm run lint
+npm run build
+```

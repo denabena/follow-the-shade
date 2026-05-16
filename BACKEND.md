@@ -47,6 +47,7 @@ Why one composite tool? The current app already uses LangChain tools, but a 9-ho
 Recommended MVP stack:
 
 - **Agent/runtime:** Keep current FastAPI + LangChain/LangGraph structure.
+- **Data mode:** Use `FOLLOW_THE_SHADE_DATA_MODE=mock|actual`; mock mode powers frontend development from seed data, actual mode attempts server-side API calls and falls back honestly.
 - **Places:** Google Places API (New) if a key is available; OSM Overpass fallback.
 - **Buildings:** OpenStreetMap via Overpass API.
 - **Sun position:** Python `astral`.
@@ -907,6 +908,28 @@ MVP constraints:
 - Cache place search by area/radius for a few minutes.
 - Only fetch Place Details for top 10-12 candidates.
 
+### Caching and Rate Limits
+
+Use a small backend cache in front of every upstream source. The frontend must never call Google Places, Overpass, Open-Meteo, or shadow APIs directly.
+
+Recommended cache keys:
+
+| Source | Cache key | Suggested TTL | Notes |
+|--------|-----------|---------------|-------|
+| Google Places Nearby Search | rounded center + radius bucket + type `cafe` | 10 minutes | Protects repeated Riva/Bacvice demo queries and paid quota. |
+| Google Place Details | place id + field mask | 6-24 hours | Details are slower and often billable; only request fields used in `map_payload`. |
+| OSM Overpass buildings | rounded bbox or center/radius bucket | 30-60 minutes | Shared public infrastructure; cache aggressively and cap radius/building count. |
+| OSM fallback cafes | rounded center + radius bucket | 30-60 minutes | Use when Google is missing, fails, or returns too few candidates. |
+| Open-Meteo weather | rounded center + date + hourly window | 15-30 minutes | No key, but still cache to keep responses fast. |
+| Shadow samples | cafe terrace point + building bbox version + date + 20/30-minute time bucket | 10-30 minutes | Reuse repeated time-window checks around common demo areas. |
+
+Rate-limit behavior:
+
+- Do not retry upstream APIs more than once in the request path.
+- Prefer cached stale-but-recent data over a slow second upstream call during the demo.
+- If Places or Overpass throttles, keep the request successful with seed/fallback data and add a short `source_notes` entry.
+- Use `FOLLOW_THE_SHADE_CACHE_TTL_SECONDS` for the current in-memory MVP cache; move to Redis only if multiple backend instances are deployed.
+
 ### Failure Modes
 
 Handle explicitly:
@@ -917,6 +940,22 @@ Handle explicitly:
 - Bad time range: ask for a valid time.
 - External API down: use fallback source or return honest partial result.
 - User asks for “near me” but no coordinates: ask them to share area or enable location if frontend supports it.
+
+### Graceful Fallback Behavior
+
+Every successful cafe recommendation should still return the same API contract: `answer`, `analysis_id`, and `map_payload`. Missing upstream data should lower confidence and adjust phrasing, not break the frontend.
+
+| Missing or weak input | Backend behavior | User-facing phrasing |
+|-----------------------|------------------|----------------------|
+| Google Places key missing or request fails | Use seed cafes first; later use OSM `amenity=cafe` fallback. Keep `provider` and `source_notes` honest. | “I’m using fallback cafe data, so treat terrace locations as estimates.” |
+| Fewer than 3 cafes with outdoor evidence | Supplement with seed cafes or OSM cafes; mark `outdoor_seating.confidence` as `low` or `unknown`. | “Outdoor seating evidence is thin here, so I included a few likely terraces.” |
+| Terrace point is estimated | Use cafe coordinates or seed terrace point; lower exposure confidence. | “Terrace point is estimated, so shade timing may shift slightly.” |
+| Building footprints missing | Return cafe ranking with low exposure confidence and source note. | “Building data was unavailable, so this is a partial shade estimate.” |
+| Building heights missing | Use `height`, then `building:levels * 3`, then default 9m; record confidence reason. | “Some building heights are estimated from OSM defaults.” |
+| Open-Meteo unavailable | Leave `weather.cloud_cover_avg` and precipitation as `null`; do not block results. | “Weather nuance is unavailable, so this is direct-sun geometry only.” |
+| Sun below horizon | Treat direct sun as unavailable, rank by open/outdoor quality and explain. | “There is no direct sun in that window; I’ll optimize for a pleasant outdoor spot.” |
+| User asks outside Split | Do not geocode or search; ask for a Split area. | “I’m focused on Split. Do you want Riva, Bačvice, Marmontova, Varoš, or another Split area?” |
+| User says “near me” without coordinates | Ask one concise location-sharing or area question. | “Share your area in Split, or tell me a landmark like Riva or Bačvice.” |
 
 ## Suggested Data Contracts
 

@@ -12,6 +12,12 @@ from typing import Any, Literal
 from zoneinfo import ZoneInfo
 
 from app.analysis_store import InMemoryAnalysisStore
+from services.follow_the_shade.cache import TtlCache
+from services.follow_the_shade.data_sources import (
+    BuildingSummary,
+    FollowTheShadeDataSources,
+    WeatherSummary,
+)
 
 Preference = Literal["sun", "shade", "either"]
 ExposureState = Literal["sun", "shade"]
@@ -19,6 +25,11 @@ Period = Literal["morning", "lunch", "afternoon"]
 Language = Literal["hr", "en", "it", "de", "sl", "fr"]
 
 ZAGREB_TZ = ZoneInfo("Europe/Zagreb")
+DEFAULT_PATTERNS: dict[Period, list[ExposureState]] = {
+    "morning": ["sun", "sun", "shade", "shade"],
+    "lunch": ["sun", "shade", "shade"],
+    "afternoon": ["shade", "shade", "sun", "shade", "shade"],
+}
 
 
 @dataclass(frozen=True)
@@ -67,10 +78,19 @@ class FindSplitCafeSunShadeTool:
         *,
         analysis_store: InMemoryAnalysisStore,
         seed_path: str,
+        settings: Any | None = None,
+        upstream_cache: TtlCache | None = None,
+        data_sources: Any | None = None,
     ) -> None:
         self.analysis_store = analysis_store
         self.seed_path = Path(seed_path)
         self.seed_cafes = self._load_seed_cafes()
+        cache = upstream_cache or TtlCache(ttl_seconds=10 * 60)
+        self.data_sources = data_sources or FollowTheShadeDataSources(
+            settings=settings or object(),
+            seed_cafes=self.seed_cafes,
+            cache=cache,
+        )
 
     async def arun(self, *, query: str, thread_id: str) -> dict[str, Any]:
         parsed = self.parse_request(query)
@@ -100,7 +120,7 @@ class FindSplitCafeSunShadeTool:
             }
 
         analysis_id = f"shade_{parsed.start:%Y%m%d}_{uuid.uuid4().hex[:8]}"
-        map_payload = self._build_map_payload(
+        map_payload = await self._build_map_payload(
             analysis_id=analysis_id,
             parsed=parsed,
             query=query,
@@ -116,12 +136,12 @@ class FindSplitCafeSunShadeTool:
         best = map_payload["results"][:3]
         names = ", ".join(result["name"] for result in best)
         preference_label = "outdoor" if parsed.preference == "either" else parsed.preference
+        uncertainty = _uncertainty_sentence(map_payload["source_notes"])
         answer = (
             f"Best {preference_label} matches near {parsed.location_label} for "
             f"{_short_time(parsed.start)}-{_short_time(parsed.end)}: {names}. "
             f"{best[0]['exposure']['summary']} "
-            "This is an MVP estimate using seeded terrace points; real Google/OSM "
-            "building-shadow analysis can replace the seed source behind the same contract."
+            f"{uncertainty}"
         )
 
         return {
@@ -186,7 +206,7 @@ class FindSplitCafeSunShadeTool:
             language=language,
         )
 
-    def _build_map_payload(
+    async def _build_map_payload(
         self,
         *,
         analysis_id: str,
@@ -197,12 +217,32 @@ class FindSplitCafeSunShadeTool:
         assert parsed.end is not None
         assert parsed.period is not None
 
+        cafe_bundle = await self.data_sources.cafe_candidates(
+            center=parsed.center,
+            radius_m=parsed.radius_m,
+            limit=12,
+        )
+        building_summary = await self.data_sources.building_summary(
+            center=parsed.center,
+            radius_m=parsed.radius_m,
+        )
+        weather_summary = await self.data_sources.weather_summary(
+            center=parsed.center,
+            start=parsed.start,
+            end=parsed.end,
+        )
+
         ranked = []
         for cafe in sorted(
-            self.seed_cafes,
+            cafe_bundle.cafes,
             key=lambda item: _distance_m(parsed.center, item["terrace_point"]),
         )[:6]:
-            result = self._build_result(cafe, parsed)
+            result = self._build_result(
+                cafe,
+                parsed,
+                weather_summary,
+                building_summary,
+            )
             distance = _distance_m(parsed.center, cafe["terrace_point"])
             rank_score = (
                 result["exposure"]["match_score"] * 0.60
@@ -225,19 +265,102 @@ class FindSplitCafeSunShadeTool:
             },
             "map": {"center": parsed.center, "zoom": 16},
             "results": results,
-            "source_notes": [
-                "Demo cafe data from assets/split_cafe_seed.json.",
-                "Terrace points are estimates for frontend/backend contract testing.",
-                "Real backend should use Google Places, OpenStreetMap/Overpass, Astral/Shapely, and Open-Meteo.",
-            ],
+            "source_notes": _unique_notes(
+                cafe_bundle.source_notes
+                + building_summary.source_notes
+                + weather_summary.source_notes
+                + cafe_bundle.uncertainty_notes
+                + building_summary.uncertainty_notes
+                + weather_summary.uncertainty_notes
+                + [_shadow_source_note(building_summary)]
+            ),
         }
 
-    def _build_result(self, cafe: dict[str, Any], parsed: ParsedRequest) -> dict[str, Any]:
+    def _build_result(
+        self,
+        cafe: dict[str, Any],
+        parsed: ParsedRequest,
+        weather_summary: WeatherSummary,
+        building_summary: BuildingSummary,
+    ) -> dict[str, Any]:
         assert parsed.start is not None
         assert parsed.end is not None
         assert parsed.period is not None
 
-        pattern = cafe["patterns"][parsed.period]
+        outdoor_confidence = cafe.get("outdoor_seating_confidence", "unknown")
+        exposure_payload = self._build_exposure_payload(
+            cafe=cafe,
+            parsed=parsed,
+            building_summary=building_summary,
+            outdoor_confidence=outdoor_confidence,
+        )
+        rounded_score = exposure_payload["match_score"]
+
+        return {
+            "id": cafe["id"],
+            "name": cafe["name"],
+            "provider": cafe["provider"],
+            "location": cafe["location"],
+            "terrace_point": cafe["terrace_point"],
+            "address": cafe["address"],
+            "google_maps_uri": cafe.get("google_maps_uri"),
+            "rating": cafe.get("rating"),
+            "user_rating_count": cafe.get("user_rating_count"),
+            "is_open_for_window": cafe.get("is_open_for_window", True),
+            "outdoor_seating": {
+                "value": None if outdoor_confidence == "unknown" else True,
+                "source": cafe["provider"],
+                "confidence": outdoor_confidence,
+            },
+            "exposure": exposure_payload,
+            "weather": weather_summary.to_result_weather(),
+        }
+
+    def _build_exposure_payload(
+        self,
+        *,
+        cafe: dict[str, Any],
+        parsed: ParsedRequest,
+        building_summary: BuildingSummary,
+        outdoor_confidence: str,
+    ) -> dict[str, Any]:
+        assert parsed.start is not None
+        assert parsed.end is not None
+        assert parsed.period is not None
+
+        if building_summary.buildings:
+            from services.shadow.shadow_engine import analyze_terrace_exposure
+
+            terrace = cafe["terrace_point"]
+            exposure = analyze_terrace_exposure(
+                terrace_lat=terrace["lat"],
+                terrace_lng=terrace["lng"],
+                start=parsed.start,
+                end=parsed.end,
+                preference=parsed.preference,
+                buildings=building_summary.buildings,
+                terrace_confidence="low"
+                if outdoor_confidence in {"low", "unknown"}
+                else "medium",
+                height_estimates_used=building_summary.height_estimates_used,
+            )
+            rounded_score = exposure.match_score
+            return {
+                "preference": parsed.preference,
+                "match_score": rounded_score,
+                "label": _match_label(rounded_score),
+                "summary": exposure.summary,
+                "sun_ratio": exposure.sun_ratio,
+                "samples": [
+                    {"time": sample.time.isoformat(timespec="seconds"), "state": sample.state}
+                    for sample in exposure.samples
+                ],
+                "transition_notes": exposure.transition_notes,
+                "confidence": exposure.confidence,
+                "confidence_reasons": exposure.confidence_reasons,
+            }
+
+        pattern = (cafe.get("patterns") or DEFAULT_PATTERNS)[parsed.period]
         samples = _build_samples(parsed.start, parsed.end, pattern)
         sun_count = sum(1 for sample in samples if sample["state"] == "sun")
         sun_ratio = sun_count / len(samples)
@@ -249,47 +372,22 @@ class FindSplitCafeSunShadeTool:
             else 0.72 + min(sun_ratio, 1 - sun_ratio) * 0.20
         )
         rounded_score = round(match_score, 2)
-        confidence = "low" if cafe["outdoor_seating_confidence"] == "low" else "medium"
-
+        confidence = "low" if outdoor_confidence in {"low", "unknown"} else "medium"
         return {
-            "id": cafe["id"],
-            "name": cafe["name"],
-            "provider": cafe["provider"],
-            "location": cafe["location"],
-            "terrace_point": cafe["terrace_point"],
-            "address": cafe["address"],
-            "rating": cafe.get("rating"),
-            "user_rating_count": cafe.get("user_rating_count"),
-            "is_open_for_window": True,
-            "outdoor_seating": {
-                "value": True,
-                "source": cafe["provider"],
-                "confidence": cafe["outdoor_seating_confidence"],
-            },
-            "exposure": {
-                "preference": parsed.preference,
-                "match_score": rounded_score,
-                "label": "strong_match"
-                if rounded_score >= 0.8
-                else "good_match"
-                if rounded_score >= 0.6
-                else "ok_match",
-                "summary": _summarize_exposure(samples),
-                "sun_ratio": round(sun_ratio, 2),
-                "samples": samples,
-                "transition_notes": _transition_notes(samples),
-                "confidence": confidence,
-                "confidence_reasons": [
-                    "demo seed exposure pattern",
-                    "terrace point estimated"
-                    if confidence == "low"
-                    else "outdoor seating inferred from seed data",
-                ],
-            },
-            "weather": {
-                "cloud_cover_avg": None,
-                "precipitation_probability_max": None,
-            },
+            "preference": parsed.preference,
+            "match_score": rounded_score,
+            "label": _match_label(rounded_score),
+            "summary": _summarize_exposure(samples),
+            "sun_ratio": round(sun_ratio, 2),
+            "samples": samples,
+            "transition_notes": _transition_notes(samples),
+            "confidence": confidence,
+            "confidence_reasons": [
+                "seed exposure pattern",
+                "outdoor seating or terrace point is uncertain"
+                if confidence == "low"
+                else "outdoor seating inferred from available data",
+            ],
         }
 
     def _load_seed_cafes(self) -> list[dict[str, Any]]:
@@ -442,6 +540,37 @@ def _transition_notes(samples: list[dict[str, str]]) -> list[str]:
         if previous["state"] != current["state"]:
             notes.append(f"{current['state']} around {current['time'][11:16]}")
     return notes
+
+
+def _match_label(score: float) -> str:
+    if score >= 0.8:
+        return "strong_match"
+    if score >= 0.6:
+        return "good_match"
+    return "ok_match"
+
+
+def _shadow_source_note(building_summary: BuildingSummary) -> str:
+    if building_summary.buildings:
+        return "Shadow scoring uses Astral/Shapely building-shadow geometry."
+    return "Shadow scoring uses seed exposure patterns when building geometry is unavailable or mock mode is active."
+
+
+def _unique_notes(notes: list[str]) -> list[str]:
+    unique: list[str] = []
+    for note in notes:
+        if note and note not in unique:
+            unique.append(note)
+    return unique
+
+
+def _uncertainty_sentence(source_notes: list[str]) -> str:
+    joined = " ".join(source_notes).lower()
+    if "mock" in joined or "seed" in joined:
+        return "Treat this as an honest MVP estimate: terrace points and shadows are still partly mocked."
+    if "missing" in joined or "failed" in joined or "unavailable" in joined:
+        return "Treat this as a partial estimate because one upstream data source was missing."
+    return "I checked the available cafe, building, and weather signals for this window."
 
 
 def _detect_language(query: str) -> Language:

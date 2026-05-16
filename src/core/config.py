@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Literal, Optional
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -36,6 +36,8 @@ class Settings(BaseSettings):
     SESSION_TTL_SECONDS: int = 24 * 60 * 60
     SPLIT_CAFE_SEED_PATH: str = "assets/split_cafe_seed.json"
     CHAT_MAX_INPUT_CHARS: int = 800
+    FOLLOW_THE_SHADE_DATA_MODE: Literal["mock", "actual"] = "mock"
+    FOLLOW_THE_SHADE_CACHE_TTL_SECONDS: int = 10 * 60
 
     LOG_LEVEL: str = "INFO"
     ACCEPT_LOG_LEVEL: str = "INFO"

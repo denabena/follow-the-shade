@@ -8,6 +8,7 @@ from fastapi import Request
 class AppState:
     settings: Any
     analysis_store: Any
+    upstream_cache: Any
     agent: Any
 
 
