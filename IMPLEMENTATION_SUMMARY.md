@@ -18,10 +18,23 @@
 - Added `assets/split_cafe_seed.json` with Split demo terrace points and exposure samples.
 - Replaced the starter Next page with a small chatbot example in `app/components/chatbot-demo.tsx`.
 - Rebranded the app metadata and base styling to Follow the Shade.
+- Added a Python FastAPI backend copied/adapted from `C:\Users\roko.cubric\projekti\AI`:
+  - `src/app/main.py`, `src/app/lifespan.py`, `src/app/state.py`
+  - `src/app/api/chat/routes.py`, `src/app/api/chat/schemas.py`
+  - `src/app/analysis_store.py`
+  - `src/tools/find_split_cafe_sun_shade_tool.py`
+  - `src/services/follow_the_shade/agent.py`
+- Added `public/agent-reference.html`, a lightweight Follow the Shade version of the old `AI/agent.html` shell for the frontend developer.
 
-## Important caveat
+## Source repo note
 
-The requested `AI/` repo and BINA Istra chatbot files were not present in this workspace or nearby folders, so no files could be copied directly. This implementation follows the handoff contract from `Backend_Chatbot_And_API_Integrations.md` and gives the frontend teammate a working shape to integrate against.
+The backend and reference chat shell were copied/adapted from:
+
+```text
+C:\Users\roko.cubric\projekti\AI
+```
+
+Two pytest cache folders in that repo had access denied, but the source files, tests, config, and `agent.html` were readable.
 
 ## How the current chatbot works
 
@@ -51,9 +64,24 @@ It returns:
 
 The frontend should render cafe/map data only from `map_payload`, not by parsing `answer`.
 
-## Switching to the real backend later
+## Running the Python backend
 
-When the FastAPI/LangChain backend exists:
+Use this backend during local integration:
+
+```bash
+uv run uvicorn app.main:app --app-dir src --reload --port 8000
+```
+
+Then point Next at it:
+
+```bash
+FOLLOW_THE_SHADE_API_BASE_URL=http://localhost:8000
+FOLLOW_THE_SHADE_USE_MOCK=false
+```
+
+## Switching Next to the Python backend
+
+When the FastAPI backend is running:
 
 1. Put its base URL in `.env`:
 
@@ -68,7 +96,7 @@ FOLLOW_THE_SHADE_USE_MOCK=false
 POST /chat/final_answer
 ```
 
-The Next route will proxy to the real backend path:
+The Next route will proxy to:
 
 ```text
 POST {FOLLOW_THE_SHADE_API_BASE_URL}/chat/final_answer
@@ -76,10 +104,9 @@ POST {FOLLOW_THE_SHADE_API_BASE_URL}/chat/final_answer
 
 ## Speech endpoints
 
-The Soniox speech-key endpoints are present but intentionally return `501` while `FOLLOW_THE_SHADE_USE_MOCK=true`. Temporary key creation should happen in the real backend so main Soniox keys never reach browser code.
+The Next speech-key endpoints return `501` while `FOLLOW_THE_SHADE_USE_MOCK=true`. The Python backend has the copied Soniox temporary-key route shape and will create real temporary keys once `SONIOX_API_KEY` is filled.
 
 ## Next steps
 
-- Replace the demo seed response with the real composite tool pipeline.
 - Add real Google Places / OSM / Open-Meteo / shadow-engine services in the backend.
 - Let the frontend teammate replace the placeholder pseudo-map with Mapbox rendering from `map_payload`.

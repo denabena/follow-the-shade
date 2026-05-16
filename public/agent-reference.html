@@ -1,0 +1,538 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Follow the Shade Chat Reference</title>
+    <style>
+      :root {
+        --sea: #0f766e;
+        --sea-dark: #115e59;
+        --sun: #d9a441;
+        --clay: #b85c3d;
+        --paper: #f4f1e8;
+        --ink: #1c1917;
+        --muted: #78716c;
+        --line: #d6d3d1;
+        --white: #fff;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: grid;
+        place-items: center;
+        background: var(--paper);
+        color: var(--ink);
+        font-family:
+          Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+          "Segoe UI", sans-serif;
+        padding: 20px;
+      }
+
+      #chat-widget {
+        width: min(100%, 1120px);
+        min-height: min(760px, calc(100vh - 40px));
+        display: grid;
+        grid-template-columns: minmax(320px, 440px) 1fr;
+        border: 1px solid var(--line);
+        background: var(--white);
+      }
+
+      #chat-panel {
+        display: flex;
+        min-height: 620px;
+        flex-direction: column;
+        border-right: 1px solid var(--line);
+      }
+
+      #chat-header {
+        padding: 20px;
+        border-bottom: 1px solid var(--line);
+        background: var(--sea-dark);
+        color: var(--white);
+      }
+
+      #chat-header h1 {
+        margin: 0;
+        font-size: 24px;
+        letter-spacing: 0;
+      }
+
+      #chat-header p {
+        margin: 8px 0 0;
+        color: rgba(255, 255, 255, 0.78);
+        font-size: 13px;
+        line-height: 1.5;
+      }
+
+      .header-languages {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 14px;
+      }
+
+      .header-languages span {
+        border: 1px solid rgba(255, 255, 255, 0.25);
+        padding: 5px 9px;
+        font-size: 12px;
+        cursor: pointer;
+      }
+
+      .header-languages span.active {
+        background: var(--white);
+        color: var(--sea-dark);
+      }
+
+      #chat-container {
+        flex: 1;
+        overflow-y: auto;
+        padding: 18px;
+        background: #fbfaf7;
+      }
+
+      .empty-state {
+        display: grid;
+        gap: 16px;
+      }
+
+      .empty-state h2 {
+        margin: 0;
+        font-size: 22px;
+      }
+
+      .empty-state p {
+        margin: 0;
+        color: var(--muted);
+        line-height: 1.6;
+      }
+
+      .quick-prompts {
+        display: grid;
+        gap: 8px;
+      }
+
+      .quick-prompts button,
+      #send-button {
+        border: 0;
+        background: var(--sea);
+        color: var(--white);
+        cursor: pointer;
+      }
+
+      .quick-prompts button {
+        padding: 11px 12px;
+        text-align: left;
+        font-weight: 600;
+      }
+
+      .message-row {
+        display: flex;
+        margin-bottom: 12px;
+      }
+
+      .message-row.user {
+        justify-content: flex-end;
+      }
+
+      .message-bubble {
+        max-width: 88%;
+        padding: 12px 14px;
+        border: 1px solid var(--line);
+        background: var(--white);
+        font-size: 14px;
+        line-height: 1.6;
+      }
+
+      .user .message-bubble {
+        border-color: var(--sea);
+        background: var(--sea);
+        color: var(--white);
+      }
+
+      .bot .message-bubble {
+        color: var(--ink);
+      }
+
+      #input-area {
+        display: flex;
+        gap: 10px;
+        border-top: 1px solid var(--line);
+        padding: 14px;
+      }
+
+      #message-input {
+        min-height: 44px;
+        max-height: 120px;
+        flex: 1;
+        resize: none;
+        border: 1px solid var(--line);
+        padding: 12px;
+        font: inherit;
+        outline: none;
+      }
+
+      #message-input:focus {
+        border-color: var(--sea);
+      }
+
+      #send-button {
+        min-width: 76px;
+        padding: 0 16px;
+        font-weight: 700;
+      }
+
+      #send-button:disabled {
+        cursor: not-allowed;
+        background: #a8a29e;
+      }
+
+      #map-panel {
+        display: grid;
+        grid-template-rows: minmax(260px, 1fr) auto;
+        min-height: 620px;
+        background: #e7f0ec;
+      }
+
+      #map-placeholder {
+        position: relative;
+        overflow: hidden;
+        border-bottom: 1px solid var(--line);
+      }
+
+      .sea-band {
+        position: absolute;
+        inset: 0 0 auto;
+        height: 28%;
+        background: #8fc5c0;
+      }
+
+      .riva-band {
+        position: absolute;
+        left: 6%;
+        right: 14%;
+        top: 36%;
+        height: 18%;
+        transform: rotate(-7deg);
+        border-top: 8px solid #d2b26f;
+        border-bottom: 8px solid #d2b26f;
+      }
+
+      .palace-band {
+        position: absolute;
+        left: 45%;
+        top: 16%;
+        width: 30px;
+        height: 70%;
+        transform: rotate(17deg);
+        background: var(--clay);
+      }
+
+      .marker {
+        position: absolute;
+        display: grid;
+        width: 32px;
+        height: 32px;
+        place-items: center;
+        border: 2px solid var(--white);
+        background: var(--sea);
+        color: var(--white);
+        font-size: 12px;
+        font-weight: 800;
+      }
+
+      #results-panel {
+        background: var(--white);
+      }
+
+      .payload-header {
+        padding: 16px 18px;
+        border-bottom: 1px solid var(--line);
+      }
+
+      .payload-header small {
+        color: var(--clay);
+        font-weight: 800;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      .payload-header h2 {
+        margin: 4px 0 0;
+        font-size: 20px;
+      }
+
+      .result-card {
+        display: grid;
+        grid-template-columns: 1fr 210px;
+        gap: 14px;
+        padding: 16px 18px;
+        border-bottom: 1px solid var(--line);
+      }
+
+      .result-card h3 {
+        margin: 0;
+        font-size: 16px;
+      }
+
+      .result-card p {
+        margin: 6px 0 0;
+        color: var(--muted);
+        font-size: 13px;
+        line-height: 1.5;
+      }
+
+      .timeline {
+        display: flex;
+        gap: 3px;
+      }
+
+      .timeline span {
+        height: 28px;
+        flex: 1;
+      }
+
+      .timeline .sun {
+        background: var(--sun);
+      }
+
+      .timeline .shade {
+        background: var(--sea);
+      }
+
+      @media (max-width: 840px) {
+        body {
+          padding: 0;
+        }
+
+        #chat-widget {
+          min-height: 100vh;
+          grid-template-columns: 1fr;
+          border: 0;
+        }
+
+        #chat-panel {
+          min-height: 58vh;
+          border-right: 0;
+        }
+
+        .result-card {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+
+  <body>
+    <div id="chat-widget">
+      <section id="chat-panel">
+        <header id="chat-header">
+          <h1>Follow the Shade</h1>
+          <p>Split-only terrace chat. The map is driven by map_payload, not assistant prose.</p>
+          <div class="header-languages">
+            <span class="active" data-language="en">EN</span>
+            <span data-language="hr">HR</span>
+            <span data-language="it">IT</span>
+            <span data-language="de">DE</span>
+            <span data-language="sl">SL</span>
+            <span data-language="fr">FR</span>
+          </div>
+        </header>
+
+        <div id="chat-container"></div>
+
+        <form id="input-area">
+          <textarea
+            id="message-input"
+            rows="1"
+            placeholder="Ask for a shady cafe near Riva from 3 to 5pm"
+          ></textarea>
+          <button id="send-button" type="submit" disabled>Send</button>
+        </form>
+      </section>
+
+      <section id="map-panel">
+        <div id="map-placeholder">
+          <div class="sea-band"></div>
+          <div class="riva-band"></div>
+          <div class="palace-band"></div>
+        </div>
+
+        <div id="results-panel">
+          <div class="payload-header">
+            <small>map_payload</small>
+            <h2 id="analysis-title">Waiting for a query</h2>
+          </div>
+          <div id="results-list"></div>
+        </div>
+      </section>
+    </div>
+
+    <script>
+      document.addEventListener("DOMContentLoaded", () => {
+        const API_BASE = "/chat";
+        const API_JSON = `${API_BASE}/final_answer`;
+        const INCLUDE_AUDIO_RESPONSES = false;
+        let THREAD_ID = "follow-the-shade-thread-" + Date.now();
+
+        const chatContainer = document.getElementById("chat-container");
+        const messageInput = document.getElementById("message-input");
+        const sendButton = document.getElementById("send-button");
+        const form = document.getElementById("input-area");
+        const mapPlaceholder = document.getElementById("map-placeholder");
+        const resultsList = document.getElementById("results-list");
+        const analysisTitle = document.getElementById("analysis-title");
+
+        const quickPrompts = [
+          "Find me a shady cafe outside near Riva today from 3 to 5pm.",
+          "I want sun around Bacvice tomorrow morning.",
+          "Somewhere near Marmontova that is shaded this Saturday afternoon.",
+        ];
+
+        renderEmptyState();
+
+        form.addEventListener("submit", (event) => {
+          event.preventDefault();
+          handleSend();
+        });
+
+        messageInput.addEventListener("input", () => {
+          sendButton.disabled = !messageInput.value.trim();
+          messageInput.style.height = "auto";
+          messageInput.style.height = `${Math.min(messageInput.scrollHeight, 120)}px`;
+        });
+
+        messageInput.addEventListener("keydown", (event) => {
+          if (event.key === "Enter" && !event.shiftKey) {
+            event.preventDefault();
+            handleSend();
+          }
+        });
+
+        async function handleSend(textOverride) {
+          const text = (textOverride || messageInput.value).trim();
+          if (!text) return;
+
+          appendMessage("user", text);
+          messageInput.value = "";
+          sendButton.disabled = true;
+          const typing = appendMessage("bot", "Checking terrace samples...");
+
+          try {
+            const response = await fetch(API_JSON, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                message: text,
+                query: text,
+                thread_id: THREAD_ID,
+                include_audio: INCLUDE_AUDIO_RESPONSES,
+              }),
+            });
+            const data = await response.json();
+            typing.remove();
+
+            if (!response.ok) {
+              appendMessage("bot", `Error: ${data.detail || "Request failed."}`);
+              return;
+            }
+
+            THREAD_ID = data.thread_id || THREAD_ID;
+            appendMessage("bot", data.answer || "Answer received.");
+            renderMapPayload(data.map_payload);
+          } catch {
+            typing.remove();
+            appendMessage("bot", "Connection error: backend is not available.");
+          }
+        }
+
+        function renderEmptyState() {
+          chatContainer.innerHTML = `
+            <section class="empty-state">
+              <div>
+                <h2>Where should we sit?</h2>
+                <p>Ask naturally. The backend returns assistant text plus typed map data for the frontend.</p>
+              </div>
+              <div class="quick-prompts">
+                ${quickPrompts.map((prompt) => `<button type="button">${escapeHtml(prompt)}</button>`).join("")}
+              </div>
+            </section>
+          `;
+          chatContainer.querySelectorAll(".quick-prompts button").forEach((button) => {
+            button.addEventListener("click", () => handleSend(button.textContent));
+          });
+        }
+
+        function appendMessage(role, content) {
+          const emptyState = chatContainer.querySelector(".empty-state");
+          if (emptyState) emptyState.remove();
+
+          const row = document.createElement("div");
+          row.className = `message-row ${role}`;
+          const bubble = document.createElement("div");
+          bubble.className = "message-bubble";
+          bubble.textContent = content;
+          row.appendChild(bubble);
+          chatContainer.appendChild(row);
+          chatContainer.scrollTop = chatContainer.scrollHeight;
+          return row;
+        }
+
+        function renderMapPayload(payload) {
+          mapPlaceholder.querySelectorAll(".marker").forEach((marker) => marker.remove());
+          resultsList.innerHTML = "";
+
+          if (!payload) {
+            analysisTitle.textContent = "No map payload";
+            return;
+          }
+
+          analysisTitle.textContent = payload.analysis_id;
+          const center = payload.map.center;
+          payload.results.forEach((result, index) => {
+            const marker = document.createElement("div");
+            marker.className = "marker";
+            marker.textContent = String(index + 1);
+            marker.title = result.name;
+            marker.style.left = `${clamp(50 + (result.terrace_point.lng - center.lng) * 5200, 8, 88)}%`;
+            marker.style.top = `${clamp(50 - (result.terrace_point.lat - center.lat) * 7200, 10, 84)}%`;
+            mapPlaceholder.appendChild(marker);
+
+            const card = document.createElement("article");
+            card.className = "result-card";
+            card.innerHTML = `
+              <div>
+                <h3>${index + 1}. ${escapeHtml(result.name)}</h3>
+                <p>${escapeHtml(result.exposure.summary)}</p>
+              </div>
+              <div>
+                <div class="timeline">
+                  ${result.exposure.samples
+                    .map((sample) => `<span class="${sample.state}" title="${sample.time}: ${sample.state}"></span>`)
+                    .join("")}
+                </div>
+                <p>${Math.round(result.exposure.match_score * 100)}% match</p>
+              </div>
+            `;
+            resultsList.appendChild(card);
+          });
+        }
+
+        function escapeHtml(value) {
+          const div = document.createElement("div");
+          div.textContent = value || "";
+          return div.innerHTML;
+        }
+
+        function clamp(value, min, max) {
+          return Math.min(max, Math.max(min, value));
+        }
+      });
+    </script>
+  </body>
+</html>

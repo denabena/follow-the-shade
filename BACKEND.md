@@ -721,6 +721,30 @@ Sources:
 
 - Populartimes GitHub: https://github.com/m-wrzr/populartimes
 - Outscraper docs: https://docs.outscraper.com/
+
+## Current Repo Implementation Status
+
+Added in this repo from `C:\Users\roko.cubric\projekti\AI`:
+
+- FastAPI app shape under `src/app/` with `app.main`, `lifespan`, `state`, and chat routes.
+- Follow the Shade chat schemas with `analysis_id` and `map_payload`.
+- In-memory `AnalysisStore` for reload/deep-link recovery.
+- Deterministic `find_split_cafe_sun_shade` composite tool backed by `assets/split_cafe_seed.json`.
+- Soniox STT/TTS temporary-key route shape, rebranded with Split cafe context terms.
+- Tests in `tests/test_python_chat_backend.py`.
+- Plain HTML frontend reference at `public/agent-reference.html`, adapted from `AI/agent.html`.
+
+Run backend locally:
+
+```bash
+uv run uvicorn app.main:app --app-dir src --reload --port 8000
+```
+
+Run Python tests:
+
+```bash
+uv run pytest
+```
 - Outscraper popular times article: https://outscraper.com/places-api-popular-times/
 
 MVP recommendation:
