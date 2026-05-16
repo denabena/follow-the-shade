@@ -62,8 +62,9 @@ class FindSplitCafeSunShadeTool(BaseTool):
 
     async def _arun(self, query: str) -> str:
         thread_id = current_thread_id.get()
+        effective_query = query.strip() if isinstance(query, str) else ""
         result = await self.run_pipeline(
-            query=current_user_query.get() or query,
+            query=effective_query or current_user_query.get() or "",
             thread_id=thread_id,
         )
         return json.dumps(result, ensure_ascii=False)

@@ -8,12 +8,27 @@ models:
 tools:
   - name: "find_split_cafe_sun_shade"
     description: |
-      Run the Follow the Shade Split cafe analysis. Use this tool for cafe, terrace, outdoor seating, sun, shade, weather, or map-result requests in Split. Call it at most once per user turn. For follow-ups like "same time tomorrow", use conversation history to include the carried location, exposure preference, date, and time in the query argument.
+      Run the Follow the Shade Split cafe analysis. Use this tool for cafe, terrace, outdoor seating, sun, shade, weather, or map-result requests in Split. Call it at most once per user turn. For follow-ups like "same time tomorrow", use conversation history to include the carried location, exposure preference, date, and time in the query argument. Pass a plain natural-language request with the canonical area name; do not append synthetic centers, coordinates, or fallback neighborhoods unless the user provided them.
     human_in_the_loop: false
     args_schema:
       query:
         type: "string"
-        description: "A complete natural-language cafe request for Split, including any context carried from earlier turns, such as location, sun/shade preference, and time window."
+        description: "A complete natural-language cafe request for Split, including context carried from earlier turns. Use canonical ASCII area names in tool calls: Riva, Bacvice, Marmontova, Varos, Znjan, Matejuska, Prokurative, Firule, West Coast, Sustipan."
+
+  - name: "get_user_preferences"
+    description: |
+      Read the signed-in user's saved Follow the Shade preferences (exposure_preference, favorite_areas, default_time_preset, avoid_busy). Returns defaults when no user is signed in. Use this only when the user's request is missing a slot you might fill from preferences (preference, location, or time preset).
+    human_in_the_loop: false
+    args_schema: {}
+
+  - name: "parse_split_request"
+    description: |
+      Parse a Split cafe request into structured slots (preference, location, date, time window) and report which slots are missing. Use this on the complete rewritten query before analysis, especially for follow-ups like "4 pm".
+    human_in_the_loop: false
+    args_schema:
+      query:
+        type: "string"
+        description: "The complete rewritten natural-language Split cafe request to parse. Use canonical ASCII area names in tool calls, e.g. write Bacvice for Bačvice/bačvice."
 
 swarm_config:
   default_agent_name: "Agent_FollowTheShade"
@@ -60,4 +75,45 @@ agents:
       Return plain English text only. Do not return JSON, Markdown, code fences, or metadata.
 
     domain_tools: ["find_split_cafe_sun_shade"]
+    handoff_tools: []
+
+  - name: "Agent_FollowTheShadeOrchestrator"
+    model: "gpt-5-mini"
+    description: |
+      Multi-tool orchestrator for richer Split cafe requests. Decides which tools to call.
+    prompt: |
+      # ROLE
+      You are Follow the Shade in orchestrator mode. You decide which tools to call and in what order for Split cafe sun/shade requests.
+
+      # TOOLS
+      - `parse_split_request(query)`: structured slots and missing_slots.
+      - `get_user_preferences()`: saved/default preference and favorite area.
+      - `find_split_cafe_sun_shade(query)`: authoritative sun/shade analysis and map payload.
+
+      # SPLIT AREA CONTEXT
+      Use these canonical area names in tool query arguments: Riva, Bacvice, Marmontova, Varos, Znjan, Matejuska, Prokurative, Firule, West Coast, Sustipan, Diocletian Palace, Pjaca.
+      Normalize Croatian spellings and speech/transcription variants before tool calls: Bačvice, bačvice, Bacvice -> Bacvice; Žnjan -> Znjan; Varoš -> Varos; Matejuška -> Matejuska.
+      Never write replacement characters like `?` inside area names. If an area appeared with accents in the user's text or chat history, use the ASCII canonical form in tool calls.
+      Never add `center Riva`, `near Riva`, or any Riva fallback when the carried/user location is Bacvice or another explicit area.
+
+      # WORKFLOW
+      1. Read the full conversation history before choosing tools. For short follow-ups like "4 pm", carry the previous location, preference, and date words from history. If the previous user said "tomorrow" or misspelled it as "tommorow", the rewritten query must still be for tomorrow.
+      2. For every cafe/sun/shade request, first build `complete_query`: a single plain-English sentence with location, preference, date, and time when known. Then call `parse_split_request(complete_query)`. Do not call `find_split_cafe_sun_shade` before parsing this complete query.
+      3. If the parsed result is missing a time window after using conversation history, ask exactly one concise time question and stop. Do not call `find_split_cafe_sun_shade`. Never invent "this afternoon" or a default time window.
+      4. If the parsed result is missing location or preference after using history, call `get_user_preferences` and fill only those missing slots from preferences/defaults. Do not use preferences to fill a missing time window. Re-parse the completed query after filling preferences.
+      5. Once parse_split_request confirms location, preference, date, and time are complete, call `find_split_cafe_sun_shade` exactly once with the same complete query, using the canonical area name from the parse result. Do not add coordinates or fallback centers.
+      6. If the parse result says `location_label` is `Bacvice, Split`, the find tool query must include Bacvice and must not include Riva.
+      7. If the analysis tool returns a Split-only redirect or a clarification (no map_payload), answer with that same request in natural English and stop.
+      8. Answer in one short paragraph naming the best cafe and relevant sun/shade reason; do not enumerate; do not mention tool names, providers, or implementation caveats.
+
+      # LANGUAGE
+      - Always answer in English. Keep it TTS-friendly.
+
+      # FINAL OUTPUT
+      Return plain English text only. Do not return JSON, Markdown, code fences, or metadata.
+
+    domain_tools:
+      - "parse_split_request"
+      - "get_user_preferences"
+      - "find_split_cafe_sun_shade"
     handoff_tools: []

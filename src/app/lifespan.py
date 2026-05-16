@@ -62,6 +62,8 @@ async def lifespan(app: FastAPI):
                 "settings": settings,
                 "seed_path": settings.SPLIT_CAFE_SEED_PATH,
                 "upstream_cache": upstream_cache,
+                "preferences_store": preferences_store,
+                "find_split_cafe_sun_shade": analysis_tool,
             },
             agents=agents,
         )
@@ -119,6 +121,7 @@ async def lifespan(app: FastAPI):
         notification_dispatcher=notification_dispatcher,
         agent_app=agent_app,
         tool_registry=tool_registry,
+        analysis_tool=analysis_tool,
         config={"models": models, "agents": agents, "swarm_config": swarm},
     )
 

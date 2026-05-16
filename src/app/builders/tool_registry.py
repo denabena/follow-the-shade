@@ -79,6 +79,10 @@ class ToolRegistry:
     def get_tool(self, name: str) -> BaseTool | None:
         if name in self._tool_cache:
             return self._tool_cache[name]
+        dependency_tool = self.dependencies.get(name)
+        if isinstance(dependency_tool, BaseTool):
+            self._tool_cache[name] = dependency_tool
+            return dependency_tool
         if name not in self._tool_classes:
             return None
 

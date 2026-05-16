@@ -93,7 +93,11 @@ SPLIT_AREAS: tuple[SplitArea, ...] = (
         ("west coast", "zapadna obala"),
         {"lat": 43.5063, "lng": 16.4323},
     ),
-    SplitArea("Marjan, Split", ("marjan", "vidilica", "telegrin"), {"lat": 43.5142, "lng": 16.4275}),
+    SplitArea(
+        "Marjan, Split",
+        ("marjan", "vidilica", "telegrin"),
+        {"lat": 43.5142, "lng": 16.4275},
+    ),
     SplitArea("Kasjuni, Split", ("kasjuni",), {"lat": 43.5088, "lng": 16.4187}),
     SplitArea(
         "Poljud, Split",
@@ -616,6 +620,24 @@ class FollowTheShadePipeline:
             updates["center"] = previous.center
             updates["radius_m"] = previous.radius_m
             updates["location_explicit"] = previous.location_explicit
+
+        if (
+            parsed.time_explicit
+            and not parsed.date_explicit
+            and previous.date_explicit
+            and previous.date_anchor is not None
+        ):
+            updates["date_anchor"] = previous.date_anchor
+            updates["date_explicit"] = previous.date_explicit
+            if parsed.start is not None and parsed.end is not None:
+                updates["start"] = _move_time_window_to_date(
+                    parsed.start,
+                    previous.date_anchor,
+                )
+                updates["end"] = _move_time_window_to_date(
+                    parsed.end,
+                    previous.date_anchor,
+                )
 
         if (
             not parsed.time_explicit

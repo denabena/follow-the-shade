@@ -173,8 +173,12 @@ async def run_chat_flow(
     agent_app: Any,
     extra_config: dict[str, Any] | None = None,
     max_retries: int = MAX_RETRIES,
+    active_agent: str | None = None,
 ) -> ChatFlowResult:
     incoming_messages = _build_agent_messages(user_input=input_text)
+    initial_state: dict[str, Any] = {"messages": incoming_messages}
+    if active_agent:
+        initial_state["active_agent"] = active_agent
     config: dict[str, Any] = {
         "configurable": {"thread_id": thread_id},
         "recursion_limit": DEFAULT_AGENT_RECURSION_LIMIT,
@@ -193,9 +197,7 @@ async def run_chat_flow(
     try:
         for attempt in range(max_retries + 1):
             try:
-                response = await agent_app.ainvoke(
-                    {"messages": incoming_messages}, config
-                )
+                response = await agent_app.ainvoke(initial_state, config)
             except Exception as exc:
                 log.error(
                     "Agent execution failed on attempt %s: %s",

@@ -476,9 +476,7 @@ def _nearest_seed(
     seed_cafes: list[dict[str, Any]],
     point: dict[str, float],
 ) -> dict[str, Any]:
-    templates = [c for c in seed_cafes if not _is_illustrative_demo_seed(c)] or list(
-        seed_cafes
-    )
+    templates = list(seed_cafes)
     return min(templates, key=lambda cafe: _distance_m(point, cafe["terrace_point"]))
 
 

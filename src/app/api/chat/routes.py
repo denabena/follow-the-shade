@@ -27,7 +27,7 @@ from app.api.chat.generate_answer import (
 from app.auth.deps import get_optional_user_id
 from app.state import AppState, get_state
 from core.config import settings
-from services.follow_the_shade.preference_query import enrich_query_with_preferences
+from services.follow_the_shade.thread_context import current_user_id
 
 log = logging.getLogger(__name__)
 
@@ -270,6 +270,17 @@ async def create_soniox_tts_key(
     )
 
 
+_DEFAULT_AGENT_NAME = "Agent_FollowTheShade"
+_ORCHESTRATOR_AGENT_NAME = "Agent_FollowTheShadeOrchestrator"
+
+
+def _select_agent(message: str, state: AppState, user_id: str | None) -> str:
+    """Use the LLM orchestrator for chat turns; fall back only if parsing is unavailable."""
+    if state.analysis_tool is None:
+        return _DEFAULT_AGENT_NAME
+    return _ORCHESTRATOR_AGENT_NAME
+
+
 @router.post("/final_answer", response_model=ChatResponse)
 async def chat_final_answer(
     chat_request: ChatRequest,
@@ -277,21 +288,23 @@ async def chat_final_answer(
     user_id: str | None = Depends(get_optional_user_id),
 ) -> ChatResponse:
     message = chat_request.text
-    if user_id:
-        prefs = state.preferences_store.get(user_id)
-        message = enrich_query_with_preferences(message, prefs)
-
     if state.agent_app is None:
         raise HTTPException(
             status_code=503,
             detail="The Follow the Shade chat agent is not initialized.",
         )
 
-    result = await run_chat_flow(
-        input_text=message,
-        thread_id=chat_request.thread_id,
-        agent_app=state.agent_app,
-    )
+    active_agent = _select_agent(message, state, user_id)
+    user_id_token = current_user_id.set(user_id)
+    try:
+        result = await run_chat_flow(
+            input_text=message,
+            thread_id=chat_request.thread_id,
+            agent_app=state.agent_app,
+            active_agent=active_agent,
+        )
+    finally:
+        current_user_id.reset(user_id_token)
 
     answer = result.answer.strip() or normalize_map_answer("", result.map_payload)
 

@@ -14,6 +14,7 @@ class AppState:
     notification_dispatcher: Any | None
     agent_app: Any | None = None
     tool_registry: Any | None = None
+    analysis_tool: Any | None = None
     config: dict[str, Any] | None = None
 
 
