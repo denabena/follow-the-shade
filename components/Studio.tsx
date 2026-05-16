@@ -102,6 +102,8 @@ const StudioContent = () => {
   const [preferencesOpen, setPreferencesOpen] = useState(false);
 
   const mapRef = useRef<MapPanelHandle>(null);
+  /** When incremented (reset), in-flight chat responses must not mutate UI. */
+  const layoutGenerationRef = useRef(0);
   const voiceAudioContextRef = useRef<AudioContext | null>(null);
   const activeVoiceNodeRef = useRef<AudioBufferSourceNode | null>(null);
   const activeVoiceElementRef = useRef<HTMLAudioElement | null>(null);
@@ -482,8 +484,21 @@ const StudioContent = () => {
     );
   }, []);
 
+  const resetToStartingLook = useCallback(() => {
+    layoutGenerationRef.current += 1;
+    stopVoicePlayback();
+    setHasStarted(false);
+    setPhase({ kind: "idle" });
+    setMessages([{ id: newId(), role: "bot", text: greet(), streaming: true }]);
+    mapRef.current?.clearResults();
+    mapRef.current?.setShadeOpacity(0);
+    requestAnimationFrame(() => mapRef.current?.resize());
+    window.setTimeout(() => mapRef.current?.resize(), 720);
+  }, [stopVoicePlayback]);
+
   const beginQuery = useCallback(
     async (userUtterance: string, options: QueryOptions = {}) => {
+      const generationAtStart = layoutGenerationRef.current;
       const fromVoiceInput = options.fromVoiceInput ?? false;
 
       setHasStarted(true);
@@ -501,6 +516,10 @@ const StudioContent = () => {
           thread_id: threadId,
           include_audio: false,
         });
+
+        if (generationAtStart !== layoutGenerationRef.current) {
+          return;
+        }
 
         const responseText = response.answer;
 
@@ -552,6 +571,9 @@ const StudioContent = () => {
 
         setPhase({ kind: "done", intent });
       } catch (err) {
+        if (generationAtStart !== layoutGenerationRef.current) {
+          return;
+        }
         const detail = err instanceof Error ? err.message : "Unknown error";
         pushMessage({
           id: newId(),
@@ -655,6 +677,7 @@ const StudioContent = () => {
             onCafeSelect={handleCafeSelect}
             onOpenPreferences={() => setPreferencesOpen(true)}
             onPrimeVoicePlayback={primeVoicePlayback}
+            onResetToStartingLook={resetToStartingLook}
           />
         </div>
         <div
