@@ -834,6 +834,22 @@ const MapPanel = forwardRef<MapPanelHandle, Props>(function MapPanel(
     <div className="relative h-full w-full overflow-visible">
       <div ref={containerRef} className="absolute inset-0 z-0 h-full w-full" />
       <div className="pointer-events-none absolute inset-0 ring-1 ring-inset ring-terracotta/15" />
+      {status === "ready" && (
+        <div
+          className="pointer-events-none absolute bottom-[4px] left-[5px] z-10 max-w-[min(17rem,calc(100%-0.5rem))] rounded-md border border-ink/10 bg-bone/88 px-2.5 py-1.5 text-[10px] leading-snug text-ink/55 shadow-sm backdrop-blur-[3px] sm:bottom-[6px] sm:left-[7px] sm:px-3 sm:text-[11px]"
+          aria-hidden="true"
+        >
+          Scroll to zoom.
+          <span className="mx-1 text-ink/25" aria-hidden="true">
+            ·
+          </span>
+          Hold{" "}
+          <kbd className="rounded border border-ink/14 bg-bone-deep px-1 py-px font-mono text-[9px] font-semibold uppercase tracking-wide text-ink/75 sm:text-[10px]">
+            Ctrl
+          </kbd>{" "}
+          and drag to rotate.
+        </div>
+      )}
       {showLoadOverlay && <StatusOverlay status={status} />}
     </div>
   )
