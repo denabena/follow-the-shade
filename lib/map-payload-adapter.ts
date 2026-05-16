@@ -10,6 +10,12 @@ const parseDate = (value: string): Date => {
   return new Date();
 };
 
+const formatVenueType = (value: MapPayloadResult["venue_type"]): string | undefined => {
+  if (!value || value === "venue") return undefined;
+  if (value === "night_club") return "Nightclub";
+  return value.charAt(0).toUpperCase() + value.slice(1);
+};
+
 /** Street/local line only: drop 21000 and trailing Split / Croatia. */
 const formatAddressForDisplay = (address: string): string => {
   const original = address.trim();
@@ -60,6 +66,7 @@ const toCafe = (result: MapPayloadResult): Cafe => {
   return {
     id: result.id,
     name: result.name,
+    venueType: formatVenueType(result.venue_type),
     neighborhood:
       streetLine.length > 0 ? streetLine : fallbackArea,
     blurb: result.exposure.summary,

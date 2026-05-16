@@ -19,8 +19,8 @@ from services.follow_the_shade.address_display import format_address_for_display
 from services.follow_the_shade.cache import TtlCache
 from services.follow_the_shade.data_sources import (
     BuildingSummary,
-    CafeCandidateBundle,
     FollowTheShadeDataSources,
+    VenueCandidateBundle,
     WeatherSummary,
 )
 from services.geodata.overpass_client import OverpassClient
@@ -39,6 +39,13 @@ log = logging.getLogger(__name__)
 Preference = Literal["sun", "shade", "either"]
 Period = Literal["morning", "lunch", "afternoon"]
 Language = Literal["en"]
+VenueType = Literal["cafe", "restaurant", "bar", "night_club"]
+DEFAULT_VENUE_TYPES: tuple[VenueType, ...] = (
+    "cafe",
+    "restaurant",
+    "bar",
+    "night_club",
+)
 ZAGREB_TZ = ZoneInfo("Europe/Zagreb")
 
 
@@ -170,10 +177,12 @@ class ParsedRequest:
     period: Period | None
     must_be_open: bool
     language: Language
+    venue_types: tuple[VenueType, ...] = DEFAULT_VENUE_TYPES
     date_anchor: datetime | None = None
     needs_clarification: bool = False
     clarification: str | None = None
     outside_split: bool = False
+    venue_explicit: bool = False
     preference_explicit: bool = False
     location_explicit: bool = False
     time_explicit: bool = False
@@ -228,16 +237,17 @@ class FollowTheShadePipeline:
 
         assert parsed.start and parsed.end
 
-        cafe_bundle = await self.data_sources.cafe_candidates(
+        venue_bundle = await self.data_sources.venue_candidates(
             center=parsed.center,
             radius_m=parsed.radius_m,
             limit=12,
+            venue_types=parsed.venue_types,
         )
-        cafes = cafe_bundle.cafes
-        if not cafes:
+        venues = venue_bundle.venues
+        if not venues:
             return {
                 "answer": (
-                    f"I could not find outdoor cafes near {parsed.location_label}. "
+                    f"I could not find outdoor {_venue_phrase(parsed.venue_types)} near {parsed.location_label}. "
                     "Try another Split area like Riva, Bacvice, or Marmontova."
                 ),
                 "thread_id": thread_id,
@@ -272,21 +282,21 @@ class FollowTheShadePipeline:
         weather = weather_summary.to_result_weather()
 
         results = []
-        for cafe in cafes[:12]:
+        for venue in venues[:12]:
             terrace = self._resolve_terrace(
-                cafe,
+                venue,
                 parsed.center,
                 outdoor_seating_summary.points,
             )
             exposure = self._analyze_cafe_exposure(
-                cafe=cafe,
+                cafe=venue,
                 terrace=terrace,
                 parsed=parsed,
                 buildings=buildings,
                 height_estimated=height_estimated,
             )
             exposure = _weather_adjusted_exposure(exposure, parsed, weather)
-            results.append(self._build_result(cafe, terrace, exposure, parsed, weather))
+            results.append(self._build_result(venue, terrace, exposure, parsed, weather))
 
         ranked = sorted(
             results,
@@ -306,7 +316,7 @@ class FollowTheShadePipeline:
 
         analysis_id = f"shade_{parsed.start:%Y%m%d}_{uuid.uuid4().hex[:8]}"
         source_notes = self._source_notes(
-            cafe_bundle,
+            venue_bundle,
             building_summary,
             weather_summary,
             outdoor_seating_summary,
@@ -316,6 +326,7 @@ class FollowTheShadePipeline:
             "generated_at": datetime.now(ZAGREB_TZ).isoformat(timespec="seconds"),
             "request": {
                 "preference": parsed.preference,
+                "venue_types": list(parsed.venue_types),
                 "location_label": parsed.location_label,
                 "start": parsed.start.isoformat(timespec="seconds"),
                 "end": parsed.end.isoformat(timespec="seconds"),
@@ -342,7 +353,7 @@ class FollowTheShadePipeline:
         )
         weather_note = _weather_answer_note(weather)
         answer = (
-            f"I found {len(ranked)} {preference_label} options near "
+            f"I found {len(ranked)} {preference_label} {_venue_phrase(parsed.venue_types)} near "
             f"{parsed.location_label} for "
             f"{_short_time(parsed.start)}-{_short_time(parsed.end)}."
             f"{weather_note}"
@@ -360,10 +371,11 @@ class FollowTheShadePipeline:
 
     async def _discover_cafes(self, parsed: ParsedRequest) -> list[dict[str, Any]]:
         if self.places:
-            google_cafes = await self.places.nearby_cafes(
+            google_cafes = await self.places.nearby_venues(
                 parsed.center["lat"],
                 parsed.center["lng"],
                 radius_m=parsed.radius_m,
+                venue_types=parsed.venue_types,
             )
             if google_cafes:
                 return self._merge_seed_overrides(google_cafes)
@@ -492,6 +504,9 @@ class FollowTheShadePipeline:
             "id": cafe["id"],
             "name": cafe["name"],
             "provider": cafe.get("provider", "unknown"),
+            "venue_type": cafe.get("venue_type") or _infer_venue_type(cafe),
+            "venue_types": cafe.get("venue_types")
+            or [cafe.get("venue_type") or _infer_venue_type(cafe)],
             "area": cafe.get("area"),
             "location": cafe["location"],
             "terrace_point": {"lat": terrace["lat"], "lng": terrace["lng"]},
@@ -533,7 +548,7 @@ class FollowTheShadePipeline:
 
     def _source_notes(
         self,
-        cafe_bundle: CafeCandidateBundle,
+        cafe_bundle: VenueCandidateBundle,
         building_summary: BuildingSummary,
         weather_summary: WeatherSummary,
         outdoor_seating_summary: Any,
@@ -553,7 +568,7 @@ class FollowTheShadePipeline:
             if note and note not in unique_notes:
                 unique_notes.append(note)
         return unique_notes or [
-            "Cafe and exposure data from Follow the Shade seed data."
+            "Venue and exposure data from Follow the Shade seed data."
         ]
 
     def _redirect_split(self, thread_id: str, language: Language) -> dict[str, Any]:
@@ -583,6 +598,9 @@ class FollowTheShadePipeline:
                     "name": entry["name"],
                     "area": entry.get("area"),
                     "provider": entry.get("provider", "demo_seed"),
+                    "venue_type": entry.get("venue_type") or _infer_venue_type(entry),
+                    "venue_types": entry.get("venue_types")
+                    or [entry.get("venue_type") or _infer_venue_type(entry)],
                     "location": entry["location"],
                     "terrace_point": entry["terrace_point"],
                     "address": entry.get("address"),
@@ -609,6 +627,10 @@ class FollowTheShadePipeline:
             return parsed
 
         updates: dict[str, Any] = {}
+        if not parsed.venue_explicit and previous.venue_explicit:
+            updates["venue_types"] = previous.venue_types
+            updates["venue_explicit"] = previous.venue_explicit
+
         if not parsed.preference_explicit and previous.preference != "either":
             updates["preference"] = previous.preference
             updates["preference_explicit"] = previous.preference_explicit
@@ -674,6 +696,7 @@ class FollowTheShadePipeline:
             return
         has_user_signal = (
             parsed.preference_explicit
+            or parsed.venue_explicit
             or parsed.location_explicit
             or parsed.time_explicit
             or parsed.start is not None
@@ -688,6 +711,7 @@ class FollowTheShadePipeline:
         normalized = self._normalize(query)
         now_zagreb = (now or datetime.now(ZAGREB_TZ)).astimezone(ZAGREB_TZ)
         language: Language = "en"
+        venue_types, venue_explicit = _parse_venue_types(normalized)
         preference, preference_explicit = _parse_preference(normalized)
         area, location_explicit = _find_area(normalized)
         date_anchor, date_explicit = _parse_date(normalized, now_zagreb)
@@ -706,7 +730,9 @@ class FollowTheShadePipeline:
                 date_anchor=date_anchor,
                 must_be_open=True,
                 language=language,
+                venue_types=venue_types,
                 outside_split=True,
+                venue_explicit=venue_explicit,
                 preference_explicit=preference_explicit,
                 location_explicit=location_explicit,
                 date_explicit=date_explicit,
@@ -725,11 +751,13 @@ class FollowTheShadePipeline:
                 date_anchor=date_anchor,
                 must_be_open=True,
                 language=language,
+                venue_types=venue_types,
                 needs_clarification=True,
                 clarification=(
                     "What time window should I check? For example: today from "
                     "3 to 5pm, tomorrow morning, or this Saturday afternoon."
                 ),
+                venue_explicit=venue_explicit,
                 preference_explicit=preference_explicit,
                 location_explicit=location_explicit,
                 date_explicit=date_explicit,
@@ -747,6 +775,8 @@ class FollowTheShadePipeline:
             date_anchor=date_anchor,
             must_be_open=True,
             language=language,
+            venue_types=venue_types,
+            venue_explicit=venue_explicit,
             preference_explicit=preference_explicit,
             location_explicit=location_explicit,
             time_explicit=True,
@@ -814,6 +844,8 @@ def _build_answer_facts(
     return {
         "request": {
             "preference": parsed.preference,
+            "venue_types": list(parsed.venue_types),
+            "venue_label": _venue_phrase(parsed.venue_types),
             "location": parsed.location_label,
             "time_window": {
                 "start": parsed.start.isoformat(timespec="seconds"),
@@ -831,7 +863,7 @@ def _build_answer_facts(
             "notes": source_notes,
         },
         "response_guidance": (
-            "Use these facts to recommend the strongest cafe by name and optionally "
+            "Use these facts to recommend the strongest venue by name and optionally "
             "one backup. Mention weather only when it changes how sun or shade will "
             "feel. Do not mention provider names, internal tools, estimated geometry, "
             "or implementation caveats unless the user asks."
@@ -844,6 +876,7 @@ def _answer_match_fact(result: dict[str, Any]) -> dict[str, Any]:
     outdoor_seating = result.get("outdoor_seating") or {}
     return {
         "name": result.get("name"),
+        "venue_type": result.get("venue_type"),
         "area": result.get("area"),
         "address": result.get("address"),
         "provider": result.get("provider"),
@@ -997,6 +1030,59 @@ def _parse_preference(query: str) -> tuple[Preference, bool]:
     if re.search(r"\b(sun|sunny|sunlight|direct sun|sunce|suncano)\b", query):
         return "sun", True
     return "either", False
+
+
+def _parse_venue_types(query: str) -> tuple[tuple[VenueType, ...], bool]:
+    venue_types: list[VenueType] = []
+
+    def add(venue_type: VenueType) -> None:
+        if venue_type not in venue_types:
+            venue_types.append(venue_type)
+
+    if re.search(r"\b(cafe|cafes|caffe|coffee|kava|espresso)\b", query):
+        add("cafe")
+    if re.search(
+        r"\b(restaurant|restaurants|konoba|konobe|dinner|meal|food|eat|pizza|pizzeria)\b",
+        query,
+    ):
+        add("restaurant")
+    if re.search(r"\b(bar|bars|pub|pubs|cocktail|wine|beer|drinks?)\b", query):
+        add("bar")
+    if re.search(r"\b(nightclub|nightclubs|night\s*club|club|clubs|dancing)\b", query):
+        add("night_club")
+
+    return tuple(venue_types) if venue_types else DEFAULT_VENUE_TYPES, bool(venue_types)
+
+
+def _venue_phrase(venue_types: tuple[VenueType, ...]) -> str:
+    normalized = tuple(venue_types or DEFAULT_VENUE_TYPES)
+    if set(normalized) == set(DEFAULT_VENUE_TYPES):
+        return "venues"
+    labels = {
+        "cafe": "cafes",
+        "restaurant": "restaurants",
+        "bar": "bars",
+        "night_club": "nightclubs",
+    }
+    parts = [labels.get(venue_type, "venues") for venue_type in normalized]
+    if len(parts) == 1:
+        return parts[0]
+    return f"{', '.join(parts[:-1])} and {parts[-1]}"
+
+
+def _infer_venue_type(venue: dict[str, Any]) -> VenueType | str:
+    explicit = venue.get("venue_type")
+    if explicit in DEFAULT_VENUE_TYPES:
+        return explicit
+
+    normalized_name = FollowTheShadePipeline._normalize(str(venue.get("name", "")))
+    if re.search(r"\b(nightclub|night club|club)\b", normalized_name):
+        return "night_club"
+    if re.search(r"\b(bar|pub)\b", normalized_name):
+        return "bar"
+    if re.search(r"\b(restaurant|konoba|pizza|pizzeria|kitchen)\b", normalized_name):
+        return "restaurant"
+    return "cafe"
 
 
 def _alias_matches(normalized_query: str, alias: str) -> bool:

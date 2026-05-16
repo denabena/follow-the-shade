@@ -2,6 +2,7 @@ export type ExposurePreference = "sun" | "shade" | "either";
 export type ExposureState = "sun" | "shade";
 export type DetectedLanguage = string;
 export type OutdoorSeatingConfidence = "high" | "medium" | "low" | "unknown";
+export type VenueType = "cafe" | "restaurant" | "bar" | "night_club" | "venue";
 
 export type ChatAudio = {
   mime_type: string;
@@ -28,6 +29,8 @@ export type MapPayloadResult = {
   id: string;
   name: string;
   provider: string;
+  venue_type?: VenueType;
+  venue_types?: VenueType[];
   /** Neighborhood / micro-area when street-only address is unavailable. */
   area?: string;
   location: LatLng;
@@ -66,6 +69,7 @@ export type MapPayload = {
   generated_at: string;
   request: {
     preference: ExposurePreference;
+    venue_types?: VenueType[];
     location_label: string;
     start: string;
     end: string;
@@ -102,6 +106,8 @@ export type SeedCafe = {
   id: string;
   name: string;
   area: string;
+  venue_type?: VenueType;
+  venue_types?: VenueType[];
   provider: string;
   location: LatLng;
   terrace_point: LatLng;

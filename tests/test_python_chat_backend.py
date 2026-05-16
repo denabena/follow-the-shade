@@ -215,6 +215,27 @@ def test_around_single_time_returns_bacvice_shade_payload() -> None:
     )
 
 
+def test_restaurant_request_returns_restaurant_venue_payload() -> None:
+    with TestClient(app) as client:
+        response = client.post(
+            "/chat/final_answer",
+            json={
+                "message": "Find me a shady restaurant near Riva today from 3 to 5pm.",
+                "thread_id": "restaurant-type-thread",
+            },
+        )
+
+    payload = response.json()
+    assert response.status_code == 200
+    request = payload["map_payload"]["request"]
+    assert request["venue_types"] == ["restaurant"]
+    assert payload["map_payload"]["results"]
+    assert all(
+        "restaurant" in result.get("venue_types", [result.get("venue_type")])
+        for result in payload["map_payload"]["results"]
+    )
+
+
 def test_parser_ignores_iso_date_when_reading_afternoon_window() -> None:
     pipeline = FollowTheShadePipeline(settings, settings.SPLIT_CAFE_SEED_PATH)
     parsed = pipeline.parse_request(
@@ -290,7 +311,7 @@ def test_open_meteo_rain_blocks_usable_direct_sun() -> None:
     with (
         patch.object(settings, "FOLLOW_THE_SHADE_DATA_MODE", "actual"),
         patch(
-            "services.places.google_places.GooglePlacesClient.nearby_cafes",
+            "services.places.google_places.GooglePlacesClient.nearby_venues",
             new_callable=AsyncMock,
             return_value=[],
         ),
@@ -358,7 +379,7 @@ def test_pipeline_injects_google_places_and_weather_answer_facts() -> None:
         patch.object(settings, "FOLLOW_THE_SHADE_DATA_MODE", "actual"),
         patch.object(settings, "GOOGLE_PLACES_API_KEY", "test-key"),
         patch(
-            "services.places.google_places.GooglePlacesClient.nearby_cafes",
+            "services.places.google_places.GooglePlacesClient.nearby_venues",
             new_callable=AsyncMock,
             return_value=google_cafes,
         ),

@@ -20,7 +20,7 @@ const fraunces = Fraunces({
 export const metadata: Metadata = {
   title: "Follow the Shade",
   description:
-    "Find a Split cafe in the sun, or in the shade, for the exact hour you want to sit outside. The browser simulates real shadows cast by the city around you.",
+    "Find a Split terrace venue in the sun, or in the shade, for the exact hour you want to sit outside. The browser simulates real shadows cast by the city around you.",
   icons: {
     icon: "/favicon.ico"
   }

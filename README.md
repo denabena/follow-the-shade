@@ -1,6 +1,6 @@
 # Follow the Shade
 
-Follow the Shade is a Split-only outdoor cafe finder. Users ask naturally, for example: "Find me a shady cafe outside near Riva today from 3 to 5pm." The backend returns conversational advice plus a typed `map_payload` that the frontend renders as map markers, result cards, and sun/shade timelines.
+Follow the Shade is a Split-only outdoor venue finder for cafes, restaurants, bars, nightclubs, and similar terraces. Users ask naturally, for example: "Find me a shady restaurant outside near Riva today from 3 to 5pm." The backend returns conversational advice plus a typed `map_payload` that the frontend renders as map markers, result cards, and sun/shade timelines.
 
 ## Architecture
 
@@ -23,7 +23,7 @@ There are two separate toggles:
 | ----------------------------------- | ------------------- | --------------------------------------------------------------------------- |
 | `FOLLOW_THE_SHADE_USE_MOCK=true`    | Next route handlers | Return the local TypeScript mock response.                                  |
 | `FOLLOW_THE_SHADE_USE_MOCK=false`   | Next route handlers | Proxy `/chat/...` routes to FastAPI.                                        |
-| `FOLLOW_THE_SHADE_DATA_MODE=mock`   | Python backend      | Use seed cafe data and mocked weather/building notes.                       |
+| `FOLLOW_THE_SHADE_DATA_MODE=mock`   | Python backend      | Use seed venue data and mocked weather/building notes.                      |
 | `FOLLOW_THE_SHADE_DATA_MODE=actual` | Python backend      | Attempt Google Places, Overpass, and Open-Meteo calls, with seed fallbacks. |
 
 Default for frontend work:
@@ -112,7 +112,7 @@ Primary request:
 
 ```json
 {
-  "message": "Find me a shady cafe outside near Riva today from 3 to 5pm.",
+  "message": "Find me a shady restaurant outside near Riva today from 3 to 5pm.",
   "thread_id": "stable-session-id",
   "include_audio": false
 }
@@ -132,14 +132,14 @@ Primary response:
 }
 ```
 
-Frontend rule: render cafe names, coordinates, scores, and timelines only from `map_payload`. Do not parse assistant prose for cafe data.
+Frontend rule: render venue names, coordinates, scores, and timelines only from `map_payload`. Do not parse assistant prose for venue data.
 
 ## Fallbacks
 
 The backend should degrade gracefully:
 
-- Missing or failed Google Places: seed cafes now, OSM cafe fallback later.
-- Few cafes with outdoor evidence: supplement with seed/OSM and lower `outdoor_seating.confidence`.
+- Missing or failed Google Places: seed venues now, OSM venue fallback later.
+- Few venues with outdoor evidence: supplement with seed/OSM and lower `outdoor_seating.confidence`.
 - Missing building geometry: return results with lower exposure confidence.
 - Missing building heights: use OSM `height`, then `building:levels * 3`, then 9m default once geometry is live.
 - Missing weather: leave weather fields `null` and keep the answer focused on direct sun/shade.

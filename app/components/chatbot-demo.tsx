@@ -26,9 +26,9 @@ const initialMessages: ChatMessage[] = [
 ];
 
 const starterPrompts = [
-  "Find me a shady cafe outside near Riva today from 3 to 5pm.",
+  "Find me a shady restaurant outside near Riva today from 3 to 5pm.",
   "I want sun around Bacvice tomorrow morning.",
-  "Somewhere near Marmontova that is shaded this Saturday afternoon.",
+  "A shaded bar near Marmontova this Saturday afternoon.",
 ];
 
 export function ChatbotDemo() {
@@ -145,7 +145,7 @@ export function ChatbotDemo() {
               value={input}
               onChange={(event) => setInput(event.target.value)}
               className="min-w-0 flex-1 border border-stone-300 px-3 py-3 text-sm text-stone-950 outline-none transition placeholder:text-stone-400 focus:border-teal-700"
-              placeholder="Ask for a shady cafe near Riva from 3 to 5pm"
+              placeholder="Ask for a shady restaurant, bar, or cafe near Riva"
             />
             <button
               type="submit"

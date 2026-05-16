@@ -3,6 +3,7 @@ export type LngLat = [number, number];
 export type Cafe = {
   id: string;
   name: string;
+  venueType?: string;
   neighborhood: string;
   blurb: string;
   lng: number;

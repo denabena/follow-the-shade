@@ -42,7 +42,7 @@ const AnalysisOverlay = ({ progress, intent }: Props) => {
           </span>
           {progress && (
             <span className="font-mono tracking-[0.1em]">
-              {progress.cafesSampled}/{progress.totalCafes} sampled
+              {progress.cafesSampled}/{progress.totalCafes} venues sampled
             </span>
           )}
         </div>

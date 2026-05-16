@@ -20,7 +20,7 @@ export type Suggestion = {
 export const suggestions: Suggestion[] = [
   {
     id: "sun-riva",
-    utterance: "I want a cafe in the sun on the Riva between 3 and 5pm today."
+    utterance: "Find me a sunny restaurant on the Riva between 3 and 5pm today."
   },
   {
     id: "shade-varos",
@@ -28,11 +28,11 @@ export const suggestions: Suggestion[] = [
   },
   {
     id: "sun-marmontova",
-    utterance: "Sunny terrace around Marmontova at noon."
+    utterance: "Sunny bar terrace around Marmontova at noon."
   },
   {
     id: "shade-bacvice",
-    utterance: "Find me a shady spot near Bacvice around 4pm."
+    utterance: "Find me a shady beach bar near Bacvice around 4pm."
   }
 ]
 

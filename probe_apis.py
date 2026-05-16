@@ -58,7 +58,7 @@ async def probe_google_places_new() -> tuple[int | str, int, str]:
         return "SKIP", 0, "missing key"
 
     payload = {
-        "includedTypes": ["cafe"],
+        "includedTypes": ["cafe", "restaurant", "bar", "night_club"],
         "maxResultCount": 5,
         "rankPreference": "POPULARITY",
         "locationRestriction": {
@@ -92,7 +92,7 @@ async def probe_google_places_legacy() -> tuple[int | str, int, str]:
     params = {
         "location": f"{CENTER['lat']},{CENTER['lng']}",
         "radius": "900",
-        "type": "cafe",
+        "type": "restaurant",
         "key": api_key,
     }
     async with httpx.AsyncClient(timeout=20.0) as client:

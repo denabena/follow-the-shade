@@ -14,10 +14,17 @@ log = logging.getLogger(__name__)
 
 
 @dataclass
-class CafeCandidateBundle:
-    cafes: list[dict[str, Any]]
+class VenueCandidateBundle:
+    venues: list[dict[str, Any]]
     source_notes: list[str] = field(default_factory=list)
     uncertainty_notes: list[str] = field(default_factory=list)
+
+    @property
+    def cafes(self) -> list[dict[str, Any]]:
+        return self.venues
+
+
+CafeCandidateBundle = VenueCandidateBundle
 
 
 @dataclass
@@ -83,7 +90,22 @@ class FollowTheShadeDataSources:
         center: dict[str, float],
         radius_m: int,
         limit: int,
-    ) -> CafeCandidateBundle:
+    ) -> VenueCandidateBundle:
+        return await self.venue_candidates(
+            center=center,
+            radius_m=radius_m,
+            limit=limit,
+            venue_types=("cafe",),
+        )
+
+    async def venue_candidates(
+        self,
+        *,
+        center: dict[str, float],
+        radius_m: int,
+        limit: int,
+        venue_types: tuple[str, ...],
+    ) -> VenueCandidateBundle:
         cache_key = TtlCache.make_key(
             "places",
             {
@@ -91,6 +113,7 @@ class FollowTheShadeDataSources:
                 "center": _rounded_center(center),
                 "radius_m": _radius_bucket(radius_m),
                 "limit": limit,
+                "venue_types": list(venue_types),
             },
         )
         cached = self.cache.get(cache_key)
@@ -98,19 +121,20 @@ class FollowTheShadeDataSources:
             return cached
 
         if self.data_mode == "mock":
-            cafes = [
-                cafe
-                for cafe in self.seed_cafes
-                if _distance_m(center, cafe["terrace_point"]) <= radius_m
+            venues = [
+                venue
+                for venue in self.seed_cafes
+                if _venue_matches(venue, venue_types)
+                and _distance_m(center, venue["terrace_point"]) <= radius_m
             ]
-            cafes.sort(key=lambda cafe: _distance_m(center, cafe["terrace_point"]))
-            bundle = CafeCandidateBundle(
-                cafes=cafes[:limit],
+            venues.sort(key=lambda venue: _distance_m(center, venue["terrace_point"]))
+            bundle = VenueCandidateBundle(
+                venues=venues[:limit],
                 source_notes=[
-                    "Cafe data from mock seed file assets/split_cafe_seed.json."
+                    "Venue data from mock seed file assets/split_cafe_seed.json."
                 ],
                 uncertainty_notes=[
-                    "Cafe locations and outdoor seating are seed data for frontend development."
+                    "Venue locations and outdoor seating are seed data for frontend development."
                 ],
             )
             self.cache.set(cache_key, bundle)
@@ -120,6 +144,7 @@ class FollowTheShadeDataSources:
             center=center,
             radius_m=radius_m,
             limit=limit,
+            venue_types=venue_types,
         )
         self.cache.set(cache_key, bundle)
         return bundle
@@ -233,46 +258,56 @@ class FollowTheShadeDataSources:
         center: dict[str, float],
         radius_m: int,
         limit: int,
-    ) -> CafeCandidateBundle:
+        venue_types: tuple[str, ...],
+    ) -> VenueCandidateBundle:
         api_key = getattr(self.settings, "GOOGLE_PLACES_API_KEY", None) or getattr(
             self.settings, "GOOGLE_MAPS_API_KEY", None
         )
         if not api_key:
             return self._seed_fallback_bundle(
-                "Google Places is not configured; using mock cafe data."
+                "Google Places is not configured; using mock venue data.",
+                venue_types=venue_types,
             )
 
         from services.places.google_places import GooglePlacesClient
 
-        raw_cafes = await GooglePlacesClient(api_key).nearby_cafes(
+        raw_venues = await GooglePlacesClient(api_key).nearby_venues(
             center["lat"],
             center["lng"],
             radius_m=radius_m,
             max_results=limit,
+            venue_types=venue_types,
         )
-        if not raw_cafes:
+        if not raw_venues:
             return self._seed_fallback_bundle(
-                "Google Places returned no cafe candidates; using mock cafe data."
+                "Google Places returned no venue candidates; using mock venue data.",
+                venue_types=venue_types,
             )
 
-        cafes = [self._normalize_provider_cafe(cafe) for cafe in raw_cafes]
-        notes = ["Cafe metadata from Google Places API."]
+        venues = [self._normalize_provider_cafe(venue) for venue in raw_venues]
+        notes = ["Venue metadata from Google Places API."]
         uncertainty = [
             "Outdoor seating evidence is not guaranteed by Places, so low-evidence results are supplemented."
         ]
 
-        if len(cafes) < 3:
+        if len(venues) < 3:
             uncertainty.append(
-                "Fewer than three Google cafe candidates returned; curated seed pins "
+                "Fewer than three Google venue candidates returned; curated seed pins "
                 "may fill remaining slots (illustrative demo locales are never added)."
             )
-        supplemented = _merge_seed_supplements(cafes, self.seed_cafes, center, limit)
-        if len(supplemented) > len(cafes):
+        supplemented = _merge_seed_supplements(
+            venues,
+            self.seed_cafes,
+            center,
+            limit,
+            venue_types,
+        )
+        if len(supplemented) > len(venues):
             notes.append(
-                "Seed cafe data supplements missing or low-evidence API results."
+                "Seed venue data supplements missing or low-evidence API results."
             )
-        return CafeCandidateBundle(
-            cafes=supplemented,
+        return VenueCandidateBundle(
+            venues=supplemented,
             source_notes=notes,
             uncertainty_notes=uncertainty,
         )
@@ -393,19 +428,26 @@ class FollowTheShadeDataSources:
             ],
         )
 
-    def _seed_fallback_bundle(self, reason: str) -> CafeCandidateBundle:
-        cafes: list[dict[str, Any]] = list(self.seed_cafes)
-        notes = ["Cafe data from mock seed file assets/split_cafe_seed.json."]
+    def _seed_fallback_bundle(
+        self,
+        reason: str,
+        *,
+        venue_types: tuple[str, ...],
+    ) -> VenueCandidateBundle:
+        venues: list[dict[str, Any]] = [
+            venue for venue in self.seed_cafes if _venue_matches(venue, venue_types)
+        ]
+        notes = ["Venue data from mock seed file assets/split_cafe_seed.json."]
         uncertainty = [reason]
         if self.data_mode == "actual":
-            verified = [c for c in cafes if not _is_illustrative_demo_seed(c)]
+            verified = [venue for venue in venues if not _is_illustrative_demo_seed(venue)]
             if verified:
-                cafes = verified
+                venues = verified
                 notes.append(
                     "Illustrative demo:* seed locales omitted when APIs are unavailable."
                 )
-        return CafeCandidateBundle(
-            cafes=cafes,
+        return VenueCandidateBundle(
+            venues=venues,
             source_notes=notes,
             uncertainty_notes=uncertainty,
         )
@@ -429,6 +471,10 @@ class FollowTheShadeDataSources:
         return {
             **cafe,
             "area": cafe.get("area") or seed_template.get("area", "Riva"),
+            "venue_type": cafe.get("venue_type") or seed_template.get("venue_type") or "venue",
+            "venue_types": cafe.get("venue_types")
+            or seed_template.get("venue_types")
+            or [cafe.get("venue_type") or seed_template.get("venue_type") or "venue"],
             "location": point,
             "terrace_point": cafe.get("terrace_point") or point,
             "patterns": cafe.get("patterns") or seed_template["patterns"],
@@ -446,25 +492,40 @@ class FollowTheShadeDataSources:
 
 
 def _merge_seed_supplements(
-    cafes: list[dict[str, Any]],
-    seed_cafes: list[dict[str, Any]],
+    venues: list[dict[str, Any]],
+    seed_venues: list[dict[str, Any]],
     center: dict[str, float],
     limit: int,
+    venue_types: tuple[str, ...],
 ) -> list[dict[str, Any]]:
-    merged = list(cafes)
-    known_ids = {cafe["id"] for cafe in merged}
+    merged = list(venues)
+    known_ids = {venue["id"] for venue in merged}
     for seed in sorted(
-        seed_cafes, key=lambda cafe: _distance_m(center, cafe["terrace_point"])
+        seed_venues, key=lambda venue: _distance_m(center, venue["terrace_point"])
     ):
         if len(merged) >= limit:
             break
         if seed["id"] in known_ids:
+            continue
+        if not _venue_matches(seed, venue_types):
             continue
         if _is_illustrative_demo_seed(seed):
             continue
         merged.append(seed)
         known_ids.add(seed["id"])
     return merged
+
+
+def _venue_matches(venue: dict[str, Any], requested_types: tuple[str, ...]) -> bool:
+    if not requested_types:
+        return True
+    venue_types = venue.get("venue_types") or [venue.get("venue_type")]
+    normalized = {
+        "night_club" if venue_type == "nightclub" else venue_type
+        for venue_type in venue_types
+        if isinstance(venue_type, str)
+    }
+    return bool(normalized.intersection(requested_types))
 
 
 def _is_illustrative_demo_seed(seed: dict[str, Any]) -> bool:

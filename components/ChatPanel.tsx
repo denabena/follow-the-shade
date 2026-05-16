@@ -349,7 +349,7 @@ const ChatPanel = ({
                   Tracing rooftops for your window…
                 </p>
                 <p className="mt-1 font-mono text-[10px] uppercase tracking-[0.14em] text-terracotta-deep">
-                  Checking cafes · buildings · sun path
+                  Checking venues · buildings · sun path
                 </p>
               </div>
             </div>
@@ -407,9 +407,9 @@ const ChatPanel = ({
                 ? "Listening…"
                 : busy
                   ? "Checking shadows…"
-                  : "Where & when - sun or shade?"
+                  : "Restaurant, bar, cafe - where and when?"
             }
-            aria-label="Where and when, sun or shade"
+                aria-label="Venue, place, time, sun or shade"
             className={cn(
               "min-h-[44px] max-h-32 flex-1 resize-none bg-transparent py-2.5 text-[15px] leading-5 text-ink outline-none placeholder:text-ink/35",
               "disabled:opacity-60",

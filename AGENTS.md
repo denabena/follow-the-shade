@@ -6,7 +6,7 @@ This version has breaking changes — APIs, conventions, and file structure may 
 
 # Follow the Shade — Agent Playbook
 
-**Follow the Shade** is a conversational Split cafe finder. Users ask naturally — e.g. “I want a shady cafe near Riva from 3 to 5 today” — and get map-ready results with real sun/shade analysis. It should feel like a local friend checked the conditions, not a generic places search.
+**Follow the Shade** is a conversational Split outdoor venue finder. Users ask naturally — e.g. “I want a shady restaurant near Riva from 3 to 5 today” — and get map-ready results with real sun/shade analysis for cafes, restaurants, bars, nightclubs, and similar terraces. It should feel like a local friend checked the conditions, not a generic places search.
 
 Full backend research and API notes live in `BACKEND.md`. This file is the operational guide for all agents.
 
@@ -18,7 +18,7 @@ Judges sit through 20+ pitches. Optimize for **one jaw-drop moment**, **polished
 
 | Principle | What it means for agents |
 |-----------|--------------------------|
-| **Be innovative** | Lead with the wow: *real building-shadow analysis on cafe terraces for a specific time window* — not “another chatbot with a map.” Make the sun/shade transition visible (map markers, timeline samples, or shadow overlay). |
+| **Be innovative** | Lead with the wow: *real building-shadow analysis on Split terraces for a specific time window* — not “another chatbot with a map.” Make the sun/shade transition visible (map markers, timeline samples, or shadow overlay). |
 | **Design matters** | Ugly kills credibility. Mediterranean warmth, clear typography, confident spacing. No filter panels — chat + map only. Polish beats features. |
 | **Keep demo short** | Record a **≤1 min** silent interactive walkthrough (no voiceover). Let the product speak. Rehearse these queries (see Demo Script). |
 | **Keep pitch simple** | One line: *“Tell us where and when you want to sit outside in Split — we check which terraces are actually sunny or shaded.”* Three beats: problem → magic moment → why only us. |
@@ -33,7 +33,7 @@ Judges sit through 20+ pitches. Optimize for **one jaw-drop moment**, **polished
 - **Outside Split:** Gently redirect — “I’m focused on Split. Do you want something around Riva, Bačvice, Marmontova, Varoš, or another Split area?”
 - **No Zagreb demos:** “Tkalčićeva” is Zagreb — do not seed Split data with it.
 - **Good demo areas:** Riva, Diocletian’s Palace / Pjaca, Marmontova, Prokurative, Matejuška, Varoš, Bačvice, Firule, Žnjan, West Coast, Sustipan.
-- **No filters in UI:** User chats; clarifying questions happen in chat. Map displays `map_payload` — never parse assistant prose for cafe data.
+- **No filters in UI:** User chats; clarifying questions happen in chat. Map displays `map_payload` — never parse assistant prose for venue data.
 - **Honest uncertainty:** Mention estimated terrace points, missing building heights, cloud cover, umbrellas/awnings not modeled — only when it affects the recommendation.
 
 ---
@@ -57,9 +57,9 @@ User (voice or text)
 
 ## Wow Feature (Prioritize This)
 
-**Geometric sun/shade across the user’s time window** on real Split cafe terraces, ranked by preference (`sun` | `shade` | `either`), with weather nuance.
+**Geometric sun/shade across the user’s time window** on real Split venue terraces, ranked by preference (`sun` | `shade` | `either`), with weather nuance.
 
-The demo moment: user asks for shade near Riva 15:00–17:00 → map shows 2–4 cafes with exposure samples and a clear “mostly shaded / brief sun patch at 16:00” story.
+The demo moment: user asks for shade near Riva 15:00–17:00 → map shows 2–4 venues with exposure samples and a clear “mostly shaded / brief sun patch at 16:00” story.
 
 Optional polish: Mapbox shadow simulator overlay for visual validation — never replace backend scores with frontend-only shadow checks.
 
@@ -114,7 +114,7 @@ Optional polish: Mapbox shadow simulator overlay for visual validation — never
 ### Do not
 
 - Build filter sliders, date pickers, or “preference toggles” as primary UX
-- Scrape cafe names from `answer` text
+- Scrape venue names from `answer` text
 - Block MVP on shadow overlay — text + markers + sample timeline is enough
 - Ship generic “AI assistant” chrome — brand Follow the Shade
 
@@ -134,7 +134,7 @@ Pipeline (deterministic — model explains, does not compute geometry):
 
 1. Parse request → strict schema (`preference`, time window, Split location, `must_be_open`, etc.)
 2. Geocode (Google Places or `SPLIT_LANDMARKS` seed dict for demo reliability)
-3. Find cafes with outdoor-seating evidence (Google Places; OSM Overpass fallback)
+3. Find venues with outdoor-seating evidence (Google Places; OSM Overpass fallback)
 4. Fetch buildings + estimate heights (Overpass; default 9m when tags missing)
 5. Shadow engine: Astral sun position + Shapely shadows in `EPSG:32633`
 6. Open-Meteo `cloud_cover` for weather-adjusted phrasing
@@ -154,7 +154,7 @@ Extend `ChatResponse` with `analysis_id` and `map_payload`. Add `src/app/analysi
 
 ### MVP caps (performance)
 
-- ≤12 cafe candidates; buildings within 350–500m; sample every 20–30 min
+- ≤12 venue candidates; buildings within 350–500m; sample every 20–30 min
 - Cache Overpass by bbox; do not poll Overpass from the browser
 
 ### Secrets
@@ -186,7 +186,7 @@ Agents must keep contracts stable so frontend and backend can work in parallel.
 
 ## Agent Prompt Core (backend `agent_config.yaml`)
 
-- Role: local Split assistant for outdoor cafe sun/shade
+- Role: local Split assistant for outdoor venue sun/shade
 - Call `find_split_cafe_sun_shade` exactly once when intent is clear
 - Do not invent sun/shade — use tool output
 - Final JSON only: `{ "response": "...", "detected_language": "hr|en|it|de|sl|fr" }`
@@ -197,23 +197,23 @@ Agents must keep contracts stable so frontend and backend can work in parallel.
 
 Silent walkthrough, ≤60s, no narration:
 
-1. “Find me a shady cafe outside near Riva today from 3 to 5pm.”
+1. “Find me a shady restaurant outside near Riva today from 3 to 5pm.”
 2. “I want sun around Bačvice tomorrow morning.”
 3. “Somewhere near Marmontova that is shaded this Saturday afternoon.”
 
-Prepare `assets/split_cafe_seed.json` (8–12 known terraces) if APIs or terrace detection are flaky during the live demo.
+Prepare `assets/split_cafe_seed.json` (8–12 known venue terraces) if APIs or terrace detection are flaky during the live demo.
 
 ---
 
 ## Build Priority (9-Hour MVP)
 
 1. Rebrand config/prompt → Follow the Shade
-2. Soniox STT context terms (Split/cafe/sun); keep speech endpoints
+2. Soniox STT context terms (Split/venue/sun); keep speech endpoints
 3. `analysis_id` + `map_payload` on chat response + `AnalysisStore`
 4. Google Places (or OSM fallback) + Overpass buildings + shadow engine
 5. Frontend: chat + map from `map_payload` only
 6. Open-Meteo cloud cover phrasing
-7. Terrace confidence + seed cafe overrides
+7. Terrace confidence + seed venue overrides
 8. **Freeze** — optional: busyness, Foursquare, shadow overlay
 
 ---

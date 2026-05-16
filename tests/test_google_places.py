@@ -86,6 +86,8 @@ def test_google_places_uses_new_api_when_available() -> None:
                     "displayName": {"text": "New API Cafe"},
                     "formattedAddress": "Split, Croatia",
                     "location": {"latitude": 43.5081, "longitude": 16.4391},
+                    "primaryType": "cafe",
+                    "types": ["cafe", "food"],
                     "rating": 4.7,
                     "userRatingCount": 88,
                     "regularOpeningHours": {"openNow": False},
@@ -111,3 +113,48 @@ def test_google_places_uses_new_api_when_available() -> None:
     assert cafes[0]["name"] == "New API Cafe"
     assert cafes[0]["is_open_for_window"] is False
     assert cafes[0]["outdoor_seating"] is True
+    assert cafes[0]["venue_type"] == "cafe"
+
+
+def test_google_places_nearby_venues_uses_requested_types() -> None:
+    new_response = _json_response(
+        "POST",
+        NEARBY_NEW_URL,
+        200,
+        {
+            "places": [
+                {
+                    "id": "bar-place-1",
+                    "displayName": {"text": "Terrace Bar"},
+                    "formattedAddress": "Riva, Split, Croatia",
+                    "location": {"latitude": 43.5082, "longitude": 16.4392},
+                    "primaryType": "bar",
+                    "types": ["bar", "food"],
+                    "outdoorSeating": True,
+                },
+                {
+                    "id": "club-place-1",
+                    "displayName": {"text": "Night Terrace"},
+                    "formattedAddress": "Poljud, Split, Croatia",
+                    "location": {"latitude": 43.5195, "longitude": 16.4312},
+                    "primaryType": "night_club",
+                    "types": ["night_club"],
+                },
+            ]
+        },
+    )
+
+    with patch(
+        "httpx.AsyncClient.post", new_callable=AsyncMock, return_value=new_response
+    ) as post_mock:
+        venues = asyncio.run(
+            GooglePlacesClient("test-key").nearby_venues(
+                43.5081,
+                16.4391,
+                venue_types=("bar", "night_club"),
+            )
+        )
+
+    payload = post_mock.await_args.kwargs["json"]
+    assert payload["includedTypes"] == ["bar", "night_club"]
+    assert [venue["venue_type"] for venue in venues] == ["bar", "night_club"]

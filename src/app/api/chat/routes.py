@@ -51,6 +51,13 @@ SONIOX_CONTEXT_TERMS = [
     "shade",
     "sunny terrace",
     "outdoor seating",
+    "restaurant",
+    "restaurants",
+    "bar",
+    "bars",
+    "nightclub",
+    "nightclubs",
+    "konoba",
 ]
 
 
@@ -77,7 +84,7 @@ def _build_soniox_stt_config() -> SpeechRealtimeConfig:
             "general": [
                 {
                     "key": "domain",
-                    "value": "Split cafes, terrace sun, building shade, tourist requests",
+                    "value": "Split venues, restaurants, bars, nightclubs, terrace sun, building shade, tourist requests",
                 }
             ],
         },

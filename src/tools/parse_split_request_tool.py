@@ -15,15 +15,15 @@ from tools.utils import get_tool_config, override_field_descriptions_from_schema
 class ParseSplitRequestInput(BaseModel):
     query: str = Field(
         ...,
-        description="Natural-language Split cafe request to parse into slots.",
+        description="Natural-language Split venue request to parse into slots.",
     )
 
 
 class ParseSplitRequestTool(BaseTool):
     name: str = "parse_split_request"
     description: str = (
-        "Parse a Split cafe request into structured slots: exposure preference, "
-        "location, time window, date, and what is explicit vs missing. "
+        "Parse a Split cafe, restaurant, bar, or nightclub request into structured "
+        "slots: venue type, exposure preference, location, time window, date, and what is explicit vs missing. "
         "Use this before deciding what to ask the user or what to fill from preferences."
     )
     args_schema: Any = ParseSplitRequestInput
@@ -99,6 +99,7 @@ def _parsed_to_dict(parsed: Any) -> dict[str, Any]:
         "Diocletian Palace",
         "Pjaca",
     ]
+    data["supported_venue_types"] = ["cafe", "restaurant", "bar", "night_club"]
     data["tool_query_guidance"] = (
         "Use canonical ASCII area names in follow-up and analysis tool queries. "
         "For Bačvice/bačvice, write Bacvice. Do not add Riva as a fallback when "

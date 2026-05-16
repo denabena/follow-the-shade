@@ -253,7 +253,9 @@ const buildCafePopupDom = (
 
   const sub = document.createElement("p")
   sub.className = "text-[9px] font-medium uppercase tracking-[0.14em] text-ink/55"
-  sub.textContent = cafe.neighborhood
+  sub.textContent = cafe.venueType
+    ? `${cafe.venueType} - ${cafe.neighborhood}`
+    : cafe.neighborhood
   root.appendChild(sub)
 
   const nav = document.createElement("a")

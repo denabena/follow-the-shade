@@ -18,13 +18,13 @@ from tools.utils import get_tool_config, override_field_descriptions_from_schema
 class FindSplitCafeSunShadeInput(BaseModel):
     query: str = Field(
         ...,
-        description="Complete natural-language Split cafe sun/shade request.",
+        description="Complete natural-language Split venue sun/shade request.",
     )
 
 
 class FindSplitCafeSunShadeTool(BaseTool):
     name: str = "find_split_cafe_sun_shade"
-    description: str = "Run Split cafe sun/shade analysis and return map payload JSON."
+    description: str = "Run Split venue sun/shade analysis and return map payload JSON."
     args_schema: Any = FindSplitCafeSunShadeInput
 
     analysis_store: Any = None

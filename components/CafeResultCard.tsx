@@ -14,6 +14,9 @@ type Props = {
 
 const CafeResultCard = ({ result, intent, onSelect, onShadeSampleTime }: Props) => {
   const { cafe, sunFraction, headline, nuance, matches, timeline } = result
+  const locationLine = cafe.venueType
+    ? `${cafe.venueType} - ${cafe.neighborhood}`
+    : cafe.neighborhood
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
     if (e.key === "Enter" || e.key === " ") {
@@ -43,7 +46,7 @@ const CafeResultCard = ({ result, intent, onSelect, onShadeSampleTime }: Props) 
             {cafe.name}
           </h3>
           <p className="mt-0.5 text-[11px] font-medium uppercase tracking-[0.18em] text-ink/55">
-            {cafe.neighborhood}
+            {locationLine}
           </p>
         </div>
         <div className="shrink-0 text-right">

@@ -425,7 +425,7 @@ function buildMapPayload(input: {
     },
     results: ranked,
     source_notes: [
-      "Demo cafe data from assets/split_cafe_seed.json.",
+      "Demo venue data from assets/split_cafe_seed.json.",
       "Terrace points are estimates for frontend/backend contract testing.",
       "Real backend should use Google Places, OpenStreetMap/Overpass, Astral/Shapely, and Open-Meteo.",
     ],
@@ -475,6 +475,7 @@ function buildResult(
     id: cafe.id,
     name: cafe.name,
     provider: cafe.provider,
+    venue_type: cafe.venue_type ?? "cafe",
     location: cafe.location,
     terrace_point: cafe.terrace_point,
     address: cafe.address,

@@ -10,6 +10,10 @@ const SPEECH_CONTEXT_TERMS = [
   "shade",
   "sunny terrace",
   "outdoor seating",
+  "restaurant",
+  "bar",
+  "nightclub",
+  "konoba",
 ];
 const BACKEND_PROXY_TIMEOUT_MS = 30_000;
 
