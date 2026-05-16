@@ -128,6 +128,11 @@ class NotificationDispatcher:
         }
 
     async def _run_analysis(self, *, query: str, thread_id: str) -> dict[str, Any]:
+        if hasattr(self.analysis_runner, "run_pipeline"):
+            return await self.analysis_runner.run_pipeline(
+                query=query,
+                thread_id=thread_id,
+            )
         if hasattr(self.analysis_runner, "arun"):
             return await self.analysis_runner.arun(query=query, thread_id=thread_id)
         return await self.analysis_runner.run(query=query, thread_id=thread_id)
