@@ -96,7 +96,9 @@ class FollowTheShadeDataSources:
             cafes.sort(key=lambda cafe: _distance_m(center, cafe["terrace_point"]))
             bundle = CafeCandidateBundle(
                 cafes=cafes[:limit],
-                source_notes=["Cafe data from mock seed file assets/split_cafe_seed.json."],
+                source_notes=[
+                    "Cafe data from mock seed file assets/split_cafe_seed.json."
+                ],
                 uncertainty_notes=[
                     "Cafe locations and outdoor seating are seed data for frontend development."
                 ],
@@ -216,10 +218,14 @@ class FollowTheShadeDataSources:
         ]
 
         if len(cafes) < 3:
-            uncertainty.append("Fewer than three Google cafe candidates returned; seed cafes fill the demo set.")
+            uncertainty.append(
+                "Fewer than three Google cafe candidates returned; seed cafes fill the demo set."
+            )
         supplemented = _merge_seed_supplements(cafes, self.seed_cafes, center, limit)
         if len(supplemented) > len(cafes):
-            notes.append("Seed cafe data supplements missing or low-evidence API results.")
+            notes.append(
+                "Seed cafe data supplements missing or low-evidence API results."
+            )
         return CafeCandidateBundle(
             cafes=supplemented,
             source_notes=notes,
@@ -234,7 +240,9 @@ class FollowTheShadeDataSources:
     ) -> BuildingSummary:
         from services.geodata.overpass_client import OverpassClient
 
-        buildings = await OverpassClient(getattr(self.settings, "OVERPASS_URL")).fetch_buildings(
+        buildings = await OverpassClient(
+            getattr(self.settings, "OVERPASS_URL")
+        ).fetch_buildings(
             center,
             radius_m=min(radius_m, 700),
         )
@@ -243,7 +251,9 @@ class FollowTheShadeDataSources:
                 building_count=0,
                 height_tag_count=0,
                 source_notes=["No nearby building geometry returned from Overpass."],
-                uncertainty_notes=["Exposure falls back to seed patterns when buildings are missing."],
+                uncertainty_notes=[
+                    "Exposure falls back to seed patterns when buildings are missing."
+                ],
             )
 
         height_tag_count = sum(
@@ -286,15 +296,19 @@ class FollowTheShadeDataSources:
 
         if cloud_cover is None and precipitation is None:
             return WeatherSummary(
-                source_notes=["Open-Meteo returned no hourly weather samples for the requested window."],
-                uncertainty_notes=["Cloud-cover nuance is unavailable for this answer."],
+                source_notes=[
+                    "Open-Meteo returned no hourly weather samples for the requested window."
+                ],
+                uncertainty_notes=[
+                    "Cloud-cover nuance is unavailable for this answer."
+                ],
             )
 
         return WeatherSummary(
             cloud_cover_avg=int(cloud_cover) if cloud_cover is not None else None,
-            precipitation_probability_max=int(precipitation)
-            if precipitation is not None
-            else None,
+            precipitation_probability_max=(
+                int(precipitation) if precipitation is not None else None
+            ),
             source_notes=["Weather context from Open-Meteo hourly forecast."],
         )
 
@@ -336,7 +350,9 @@ def _merge_seed_supplements(
 ) -> list[dict[str, Any]]:
     merged = list(cafes)
     known_ids = {cafe["id"] for cafe in merged}
-    for seed in sorted(seed_cafes, key=lambda cafe: _distance_m(center, cafe["terrace_point"])):
+    for seed in sorted(
+        seed_cafes, key=lambda cafe: _distance_m(center, cafe["terrace_point"])
+    ):
         if len(merged) >= limit:
             break
         if seed["id"] in known_ids:

@@ -46,16 +46,34 @@ class SplitArea:
 
 
 SPLIT_AREAS: tuple[SplitArea, ...] = (
-    SplitArea("Riva, Split", ("riva", "old town", "central split"), {"lat": 43.5081, "lng": 16.4391}),
-    SplitArea("Diocletian Palace, Split", ("diocletian", "palace", "pjaca", "peristil"), {"lat": 43.5086, "lng": 16.4409}),
+    SplitArea(
+        "Riva, Split",
+        ("riva", "old town", "central split"),
+        {"lat": 43.5081, "lng": 16.4391},
+    ),
+    SplitArea(
+        "Diocletian Palace, Split",
+        ("diocletian", "palace", "pjaca", "peristil"),
+        {"lat": 43.5086, "lng": 16.4409},
+    ),
     SplitArea("Marmontova, Split", ("marmontova",), {"lat": 43.5102, "lng": 16.4382}),
-    SplitArea("Prokurative, Split", ("prokurative", "trg republike"), {"lat": 43.5095, "lng": 16.4370}),
+    SplitArea(
+        "Prokurative, Split",
+        ("prokurative", "trg republike"),
+        {"lat": 43.5095, "lng": 16.4370},
+    ),
     SplitArea("Matejuska, Split", ("matejuska",), {"lat": 43.5076, "lng": 16.4355}),
     SplitArea("Varos, Split", ("varos",), {"lat": 43.5094, "lng": 16.4336}),
-    SplitArea("Bacvice, Split", ("bacvice", "bacvice beach"), {"lat": 43.5039, "lng": 16.4514}),
+    SplitArea(
+        "Bacvice, Split", ("bacvice", "bacvice beach"), {"lat": 43.5039, "lng": 16.4514}
+    ),
     SplitArea("Firule, Split", ("firule",), {"lat": 43.5019, "lng": 16.4592}),
     SplitArea("Znjan, Split", ("znjan",), {"lat": 43.5023, "lng": 16.4865}),
-    SplitArea("West Coast, Split", ("west coast", "zapadna obala"), {"lat": 43.5063, "lng": 16.4323}),
+    SplitArea(
+        "West Coast, Split",
+        ("west coast", "zapadna obala"),
+        {"lat": 43.5063, "lng": 16.4323},
+    ),
     SplitArea("Sustipan, Split", ("sustipan",), {"lat": 43.5035, "lng": 16.4223}),
 )
 
@@ -167,14 +185,22 @@ class FollowTheShadePipeline:
             results,
             key=lambda item: (
                 item["exposure"]["match_score"] * 0.65
-                + _locality_score(parsed.center, item["terrace_point"], parsed.location_label, item.get("area", "")) * 0.20
+                + _locality_score(
+                    parsed.center,
+                    item["terrace_point"],
+                    parsed.location_label,
+                    item.get("area", ""),
+                )
+                * 0.20
                 + (item.get("rating") or 0) / 5.0 * 0.15
             ),
             reverse=True,
         )[:4]
 
         analysis_id = f"shade_{parsed.start:%Y%m%d}_{uuid.uuid4().hex[:8]}"
-        source_notes = self._source_notes(cafe_bundle, building_summary, weather_summary)
+        source_notes = self._source_notes(
+            cafe_bundle, building_summary, weather_summary
+        )
         map_payload = {
             "analysis_id": analysis_id,
             "generated_at": datetime.now(ZAGREB_TZ).isoformat(timespec="seconds"),
@@ -192,7 +218,9 @@ class FollowTheShadePipeline:
 
         best = ranked[:3]
         names = ", ".join(r["name"] for r in best)
-        preference_label = "outdoor" if parsed.preference == "either" else parsed.preference
+        preference_label = (
+            "outdoor" if parsed.preference == "either" else parsed.preference
+        )
         weather_note = ""
         cloud_cover = weather.get("cloud_cover_avg")
         if cloud_cover is not None and cloud_cover > 60:
@@ -230,7 +258,9 @@ class FollowTheShadePipeline:
         seed_in_area.sort(key=lambda c: haversine_m(parsed.center, c["terrace_point"]))
         return seed_in_area[:12]
 
-    def _merge_seed_overrides(self, cafes: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    def _merge_seed_overrides(
+        self, cafes: list[dict[str, Any]]
+    ) -> list[dict[str, Any]]:
         merged = []
         for cafe in cafes:
             override = self._find_seed_override(cafe["name"])
@@ -261,9 +291,9 @@ class FollowTheShadePipeline:
             return {
                 "lat": cafe["terrace_point"]["lat"],
                 "lng": cafe["terrace_point"]["lng"],
-                "confidence": confidence
-                if confidence in {"high", "medium", "low"}
-                else "medium",
+                "confidence": (
+                    confidence if confidence in {"high", "medium", "low"} else "medium"
+                ),
             }
 
         seating = await self.overpass.fetch_outdoor_seating_near(
@@ -336,20 +366,22 @@ class FollowTheShadePipeline:
             "user_rating_count": cafe.get("user_rating_count"),
             "is_open_for_window": cafe.get("is_open_for_window", True),
             "outdoor_seating": {
-                "value": cafe.get("outdoor_seating", True)
-                if cafe.get("outdoor_seating") is not False
-                else False,
+                "value": (
+                    cafe.get("outdoor_seating", True)
+                    if cafe.get("outdoor_seating") is not False
+                    else False
+                ),
                 "source": cafe.get("provider", "unknown"),
                 "confidence": terrace["confidence"],
             },
             "exposure": {
                 "preference": parsed.preference,
                 "match_score": score,
-                "label": "strong_match"
-                if score >= 0.8
-                else "good_match"
-                if score >= 0.6
-                else "ok_match",
+                "label": (
+                    "strong_match"
+                    if score >= 0.8
+                    else "good_match" if score >= 0.6 else "ok_match"
+                ),
                 "summary": exposure.summary,
                 "sun_ratio": exposure.sun_ratio,
                 "samples": [
@@ -381,7 +413,9 @@ class FollowTheShadePipeline:
         for note in notes:
             if note and note not in unique_notes:
                 unique_notes.append(note)
-        return unique_notes or ["Cafe and exposure data from Follow the Shade seed data."]
+        return unique_notes or [
+            "Cafe and exposure data from Follow the Shade seed data."
+        ]
 
     def _redirect_split(self, thread_id: str, language: Language) -> dict[str, Any]:
         return {
@@ -430,7 +464,9 @@ class FollowTheShadePipeline:
         now_zagreb = (now or datetime.now(ZAGREB_TZ)).astimezone(ZAGREB_TZ)
         language = _detect_language(normalized)
 
-        if re.search(r"\b(zagreb|tkalciceva|tkalca|dubrovnik|zadar|rijeka|pula)\b", normalized):
+        if re.search(
+            r"\b(zagreb|tkalciceva|tkalca|dubrovnik|zadar|rijeka|pula)\b", normalized
+        ):
             return ParsedRequest(
                 preference=_parse_preference(normalized),
                 location_label=SPLIT_AREAS[0].label,
@@ -495,7 +531,9 @@ class FollowTheShadePipeline:
         return None
 
 
-def _ring_point(center: dict[str, float], bearing_deg: float, distance_m: float) -> dict[str, float]:
+def _ring_point(
+    center: dict[str, float], bearing_deg: float, distance_m: float
+) -> dict[str, float]:
     bearing = math.radians(bearing_deg)
     lat_rad = math.radians(center["lat"])
     lng_rad = math.radians(center["lng"])
@@ -519,7 +557,9 @@ def _locality_score(
 ) -> float:
     distance = haversine_m(center, terrace)
     proximity = max(0.0, 1.0 - distance / 900.0)
-    area_bonus = 0.25 if cafe_area and cafe_area.lower() in requested_area.lower() else 0.0
+    area_bonus = (
+        0.25 if cafe_area and cafe_area.lower() in requested_area.lower() else 0.0
+    )
     return min(1.0, proximity + area_bonus)
 
 
@@ -540,7 +580,11 @@ def _pattern_exposure(
 ) -> ExposureResult:
     assert parsed.start and parsed.end
     patterns = cafe.get("patterns") or {}
-    raw_states = patterns.get(parsed.period or "afternoon") or patterns.get("afternoon") or ["sun"]
+    raw_states = (
+        patterns.get(parsed.period or "afternoon")
+        or patterns.get("afternoon")
+        or ["sun"]
+    )
     states = [state if state in {"sun", "shade"} else "sun" for state in raw_states]
     times = _even_sample_times(parsed.start, parsed.end, len(states))
     samples = [
@@ -569,7 +613,11 @@ def _pattern_exposure(
         match_score=round(match_score, 2),
         summary=_pattern_summary(samples),
         transition_notes=transitions,
-        confidence=terrace_confidence if terrace_confidence in {"high", "medium", "low"} else "medium",
+        confidence=(
+            terrace_confidence
+            if terrace_confidence in {"high", "medium", "low"}
+            else "medium"
+        ),
         confidence_reasons=["seed exposure pattern for mock mode"],
     )
 
@@ -620,7 +668,14 @@ def _parse_time_window(
         query,
     )
     if explicit:
-        raw_start_hour, raw_start_minute, start_meridiem, raw_end_hour, raw_end_minute, end_meridiem = explicit.groups()
+        (
+            raw_start_hour,
+            raw_start_minute,
+            start_meridiem,
+            raw_end_hour,
+            raw_end_minute,
+            end_meridiem,
+        ) = explicit.groups()
         start_meridiem = start_meridiem or end_meridiem
         start_hour = _to_hour_24(int(raw_start_hour), start_meridiem)
         end_hour = _to_hour_24(int(raw_end_hour), end_meridiem)
@@ -640,7 +695,11 @@ def _parse_time_window(
             int(raw_end_minute or 0),
             tzinfo=ZAGREB_TZ,
         )
-        period: Period = "morning" if start_hour < 12 else "lunch" if start_hour < 14 else "afternoon"
+        period: Period = (
+            "morning"
+            if start_hour < 12
+            else "lunch" if start_hour < 14 else "afternoon"
+        )
         return start, end, period
 
     if "morning" in query:

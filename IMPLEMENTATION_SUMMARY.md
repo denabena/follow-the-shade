@@ -2,6 +2,17 @@
 
 This document records what has been implemented in this repo and what should be built next. The current goal is a hackathon-ready MVP: a conversational Split cafe finder where the user asks naturally and the frontend renders map-ready cafe/shade data from `map_payload`.
 
+## Current Status
+
+As of merge commit `4dbde8d` on `main`:
+
+- The two real `origin/main` commits (`2fb6dc9` and `1fcc57a`) are merged into this repo and pushed.
+- The frontend now uses the Studio experience in `components/Studio.tsx`, not the older chat demo shell.
+- The backend shading pipeline from `origin/main` is wired into the cache-aware mock/actual data-source layer added locally.
+- `FOLLOW_THE_SHADE_DATA_MODE=mock` keeps backend responses deterministic with seed cafes and seed exposure patterns.
+- `FOLLOW_THE_SHADE_DATA_MODE=actual` now runs the real Overpass/Open-Meteo/Google Places path and geometric shade analysis.
+- Verification passed with `uv lock`, `uv run pytest`, `npm run lint`, and `npm run build`.
+
 ## Source Material Used
 
 - Read the project instructions in `AGENTS.md`.
@@ -38,6 +49,12 @@ The Python backend lives under `src/` and follows the FastAPI structure copied f
 - Added backend analysis persistence: `src/app/analysis_store.py`.
 - Added domain agent facade: `src/services/follow_the_shade/agent.py`.
 - Added cache-aware backend source scaffolding: `src/services/follow_the_shade/cache.py` and `src/services/follow_the_shade/data_sources.py`.
+- Added parsed-request and ranking pipeline: `src/services/follow_the_shade/pipeline.py`.
+- Added provider/service integrations under:
+  - `src/services/geodata/`
+  - `src/services/places/`
+  - `src/services/shadow/`
+  - `src/services/weather/`
 - Added composite tool: `src/tools/find_split_cafe_sun_shade_tool.py`.
 
 Implemented backend endpoints:
@@ -83,9 +100,9 @@ Important frontend rule:
 - Render markers, result cards, timelines, and cafe metadata from `map_payload`.
 - Do not parse cafe names or coordinates out of assistant prose.
 
-## Implemented: Deterministic MVP Agent
+## Implemented: Parsed Request And Shading Pipeline
 
-The current Python agent is deterministic and seed-backed so it works before API keys and real geospatial services are connected.
+The current backend is still deterministic in parsing, ranking, and response assembly, but it is no longer seed-only.
 
 Implemented behavior:
 
@@ -114,11 +131,21 @@ Implemented behavior:
   - `lunch`
 - Uses `Europe/Zagreb` runtime time.
 - Asks one concise clarification when time is missing.
-- Ranks seeded cafes by a blend of exposure match and locality.
+- Uses `FOLLOW_THE_SHADE_DATA_MODE=mock|actual` to switch between deterministic seed mode and server-side API attempts.
+- Uses an in-memory TTL cache for repeated place, building, weather, and source-template lookups.
+- In `mock` mode:
+  - returns seed cafes from `assets/split_cafe_seed.json`
+  - uses seed `patterns` as exposure samples
+  - returns mocked building/weather notes so the frontend can develop deterministically
+- In `actual` mode:
+  - fetches cafe candidates from Google Places when configured
+  - fetches building footprints and outdoor seating from Overpass
+  - fetches cloud cover / precipitation context from Open-Meteo
+  - computes direct sun/shade samples with Astral, Shapely, and `pyproj`
+- Ranks cafes by a blend of exposure match, locality, and rating.
 - Persists every successful analysis under `analysis_id`.
 - Recovers saved analyses through `GET /chat/analysis/{analysis_id}`.
-- Uses `FOLLOW_THE_SHADE_DATA_MODE=mock|actual` to switch between seed-only development and server-side API attempts.
-- Uses an in-memory TTL cache for repeated place, building, weather, and source-template lookups.
+- Keeps Split-only redirect behavior and one-question clarification behavior intact.
 
 ## Implemented: Seed Cafe Data
 
@@ -134,6 +161,8 @@ The seed includes example cafes around:
 - Bacvice
 - Varos
 - Znjan
+
+The seed file now also preserves `patterns` for the extra Riva cafes added from `origin/main`, so it remains usable for both the Studio frontend mock flow and backend mock mode.
 
 The seed data currently powers both the Python backend and the Next mock backend.
 
@@ -171,31 +200,43 @@ Key files:
 - `app/api/chat/final_answer/route.ts`
 - `app/api/chat/analysis/[analysis_id]/route.ts`
 
-## Implemented: Frontend Examples
+## Implemented: Frontend Studio UI
 
-### Next React Demo
-
-Added a working React demo in:
+The primary frontend experience now lives in:
 
 ```text
-app/components/chatbot-demo.tsx
+components/Studio.tsx
 ```
 
-It demonstrates:
-
-- Stable `thread_id` per session.
-- Sending `{ message, thread_id, include_audio }`.
-- Rendering chat messages.
-- Rendering `map_payload.results`.
-- Rendering simple marker positions.
-- Rendering sample sun/shade timelines.
-- Keeping cafe data separate from `answer` text.
-
-The main page now loads this demo from:
+The main page loads it from:
 
 ```text
 app/page.tsx
 ```
+
+Implemented frontend behavior:
+
+- Stable `thread_id` per session.
+- Chat-first split layout with chat on one side and the map on the other.
+- Suggestion chips for the core demo queries.
+- Streaming bot message rendering.
+- Result cards built from `map_payload`, not from `answer` parsing.
+- Timeline bars built from backend exposure samples.
+- Map marker focus/fly-to behavior for selected cafes.
+- Mapbox GL map panel with custom marker rendering.
+- Optional client-side ShadeMap overlay support when runtime keys are present.
+- Runtime handling for missing or invalid map tokens.
+
+Key frontend files:
+
+- `components/Studio.tsx`
+- `components/ChatPanel.tsx`
+- `components/MapPanel.tsx`
+- `components/CafeResultCard.tsx`
+- `components/SunTimelineBar.tsx`
+- `lib/backend.ts`
+- `lib/map-payload-adapter.ts`
+- `lib/types.ts`
 
 ### Plain HTML Reference
 
@@ -262,6 +303,7 @@ Updated or added:
 - `IMPLEMENTATION_SUMMARY.md`
 - `BACKEND.md`
 - `.env.example`
+- `README.md`
 
 `BACKEND.md` remains the source-of-truth backend research doc. A current implementation status section was appended without deleting the original research notes.
 
@@ -335,7 +377,8 @@ uv run pytest
 
 Result:
 
-- 4 tests passed.
+- `uv lock` completed successfully without changing `uv.lock`.
+- 7 tests passed.
 
 Frontend:
 
@@ -348,6 +391,7 @@ Result:
 
 - ESLint passed.
 - Next production build passed.
+- The build was re-run after stopping local dev processes that were holding a `.next` log file open.
 
 Manual backend checks:
 
@@ -359,15 +403,18 @@ Manual backend checks:
 
 ## Known Current Limitations
 
-- The shade/sun result is currently seed-backed, not real geometric shadow analysis.
-- Google Places Nearby Search has a first backend template in `actual` mode, but outdoor seating evidence and terrace points still degrade to seed/estimated data.
-- OSM/Overpass building summary has a first backend template in `actual` mode, but building polygons are not yet used for real shadows.
-- No Astral/Shapely shadow engine is connected yet.
-- Open-Meteo weather summary has a first backend template in `actual` mode; mock mode still leaves weather values as `null`.
+- `mock` mode is still seed/pattern-backed by design; it does not use live geometry or live weather.
+- `actual` mode now uses real geometric shadow analysis, but the result quality still depends heavily on OSM building completeness and terrace-point estimates.
+- Google Places Nearby Search is integrated, but outdoor seating evidence and open-for-window handling are still coarse.
+- There is still no OSM cafe fallback when Google Places returns poor or empty candidate sets.
+- Overpass building coverage is usable for MVP shading, but relation-heavy/malformed footprint cases still need hardening.
+- Building heights are often estimated from levels or default values, which lowers confidence.
 - Cafe terrace coordinates are estimates from `assets/split_cafe_seed.json`.
-- Opening hours are assumed true for MVP seed results; Google `openNow` is only used when actual Places data is available.
+- Opening hours are still assumed true for most MVP results; window-level open filtering is not enforced yet.
 - `map_payload.weather.cloud_cover_avg` and `precipitation_probability_max` remain `null` in mock mode.
-- The current frontend map is a placeholder/pseudo-map, not Mapbox.
+- The frontend map is now Mapbox-based, but the best experience still depends on valid Mapbox and optional ShadeMap runtime keys.
+- `components/AnalysisOverlay.tsx` exists, but backend progress is not yet streamed into the UI.
+- The frontend does not yet recover the previous analysis on reload via `analysis_id`.
 - The Python backend does not yet use LangGraph/OpenAI orchestration. It calls the composite tool directly for reliability.
 - The current answer text includes source-aware uncertainty phrasing so we do not over-promise real analysis.
 - The cache is in-memory per Python process; use Redis later if multiple backend instances are deployed.
@@ -376,36 +423,27 @@ Manual backend checks:
 
 Highest priority backend tasks:
 
-- Harden Google Places Nearby Search normalization and add tests for partial/malformed responses.
-- Use `GOOGLE_MAPS_API_KEY` only on the server.
 - Add OSM/Overpass fallback cafe search.
-- Extend Overpass building fetch from summary counts to real footprint polygons.
-- Add OSM height parsing:
-  - `height`
-  - `building:height`
-  - `building:levels * 3`
-  - default fallback height
-- Add metric projection for Split:
-  - input/output: `EPSG:4326`
-  - working CRS: `EPSG:32633`
-- Add Astral sun position calculations.
-- Add Shapely building-shadow geometry.
-- Sample sun/shade every 20 to 30 minutes across the user window.
-- Replace seed exposure patterns with real geometric direct-sun samples.
+- Harden Google Places normalization and add tests for partial/malformed responses.
+- Improve `is_open_for_window` logic instead of assuming `True` for most results.
+- Improve terrace-point resolution when no explicit outdoor seating node is available.
+- Harden Overpass footprint parsing and confidence handling for missing/malformed relations.
+- Tune ranking and source-note wording when building heights are estimated or geometry is sparse.
+- Persist richer `AnalysisRecord` metadata for reload/deep-link flows.
+- Consider exposing backend progress if we want the analysis overlay to reflect real processing steps.
 - Add confidence reasons for:
   - estimated terrace point
   - missing building heights
   - default building heights
   - unavailable building data
 - Add Open-Meteo cloud cover and precipitation probability.
-- Persist richer `AnalysisRecord` objects with parsed request details.
 - Add an API-level cap on candidates and buildings for demo performance.
 - Move upstream cache to Redis if deployment needs shared cache across workers.
 
 ## Planned Next: Agent Intelligence
 
-- Add optional OpenAI/LangChain structured parsing for more complex user requests.
 - Keep deterministic pipeline as the source of truth for geometry and ranking.
+- Add optional OpenAI/LangChain structured parsing for more complex follow-up requests.
 - Add strict parsed request schema:
   - `preference`
   - `location_text`
@@ -420,30 +458,26 @@ Highest priority backend tasks:
   - early afternoon
   - late afternoon
   - evening, with sun-below-horizon handling
+- Add support for simple conversational follow-ups on the same thread:
+  - “something closer to the sea”
+  - “later”
+  - “more shade”
 - Add Croatian/Italian/German/French/Slovenian phrasing improvements.
 - Add final response generation that explains 2 to 4 best matches naturally while still returning typed `map_payload`.
 - Add source attribution strings based on real providers used in a request.
 
 ## Planned Next: Frontend
 
-- Replace pseudo-map with Mapbox GL.
-- Render markers from `map_payload.results[].terrace_point`.
-- Use `map_payload.map.center` and `map_payload.map.zoom`.
-- Show result cards with:
-  - cafe name
-  - exposure summary
-  - match score
-  - rating
-  - outdoor seating confidence
-  - transition notes
-- Add sun/shade timeline component from `exposure.samples[]`.
-- Add subtle source notes from `map_payload.source_notes`.
+- Connect reload/deep-link recovery using `analysis_id` and `GET /chat/analysis/{analysis_id}`.
+- Surface source notes and confidence more clearly in the Studio UI.
+- Decide whether to wire `AnalysisOverlay` to real backend progress or remove it from the shipped surface.
 - Add loading and empty states tuned for the demo.
 - Keep chat as the primary UX.
 - Do not add filter panels, sliders, or date-picker-first UX.
 - Add mobile layout where chat and map stack cleanly.
 - Add a polished Mediterranean visual style.
-- Optional: add Mapbox shadow overlay only as visual validation, not as ranking source.
+- Optional: keep the client-side ShadeMap overlay only as visual validation, never as ranking source.
+- Add frontend tests around `lib/map-payload-adapter.ts`, Studio interactions, and error states.
 
 ## Planned Next: Demo Readiness
 
@@ -451,8 +485,10 @@ Highest priority backend tasks:
   - `Find me a shady cafe outside near Riva today from 3 to 5pm.`
   - `I want sun around Bacvice tomorrow morning.`
   - `Somewhere near Marmontova that is shaded this Saturday afternoon.`
-- Prepare 8 to 12 high-confidence seed terrace points in Split.
+- Rehearse those three queries in both `mock` mode and `actual` mode.
+- Keep 8 to 12 high-confidence seed terrace points in Split as the fallback runbook.
 - Add a fallback mode that keeps the demo working if Google/Overpass fail.
+- Verify the map/token setup on the demo machine before recording.
 - Keep the walkthrough under 60 seconds.
 - Freeze after submission except for critical bug fixes.
 
@@ -460,19 +496,23 @@ Highest priority backend tasks:
 
 Add backend tests for:
 
-- Request parsing for `today`, `tomorrow`, and `this Saturday afternoon`.
-- Outside-Split redirect behavior.
-- `analysis_id` persistence and recovery.
 - Google Places normalization.
+- Mock mode seed-pattern exposure and `source_notes` behavior.
 - OSM building height parsing.
+- Overpass outdoor seating fallback and relation parsing.
 - Synthetic shadow geometry.
 - Weather fetch normalization.
 - `map_payload` contract stability.
+- Request parsing for `today`, `tomorrow`, and `this Saturday afternoon`.
+- Outside-Split redirect behavior.
+- `analysis_id` persistence and recovery.
 
 Add frontend checks for:
 
 - Chat request body shape.
 - Rendering `map_payload` without parsing `answer`.
+- Studio result-card rendering from real backend payloads.
+- Analysis reload/recovery flow.
 - Mobile layout.
 - Empty and loading states.
 
@@ -486,7 +526,8 @@ Add frontend checks for:
 - Use `analysis_id` for reload/recovery.
 - Use `GET /chat/analysis/{analysis_id}` to recover a saved analysis.
 - Use `public/agent-reference.html` as a behavior reference, not final design.
-- Use `app/components/chatbot-demo.tsx` as the React integration reference.
+- Use `components/Studio.tsx` as the current React integration reference.
+- Use `lib/map-payload-adapter.ts` as the adapter layer between backend payloads and frontend UI types.
 
 ## Handoff Notes For Backend Developer
 
@@ -496,3 +537,4 @@ Add frontend checks for:
 - Keep Split-only behavior strict.
 - Keep secrets server-side.
 - Keep `map_payload` stable so frontend and backend can work in parallel.
+- Keep `mock` mode deterministic and fast, even as `actual` mode gets smarter.
