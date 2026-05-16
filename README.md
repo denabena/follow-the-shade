@@ -33,6 +33,8 @@ FOLLOW_THE_SHADE_USE_MOCK=true
 FOLLOW_THE_SHADE_DATA_MODE=mock
 ```
 
+Local development values usually live in `.env.local`. The Next app reads that file automatically, and the Python backend reads both `.env` and `.env.local`, with `.env.local` taking precedence.
+
 Proxy Next to Python while keeping deterministic backend data:
 
 ```env
