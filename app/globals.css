@@ -1,24 +1,154 @@
 @import "tailwindcss";
 
 :root {
-  --background: #f4f1e8;
-  --foreground: #1c1917;
+  --bone: #f4efe6;
+  --bone-soft: #ebe3d4;
+  --bone-deep: #ddd2bd;
+  --ink: #0e2a3d;
+  --ink-soft: #1b3a4f;
+  --terracotta: #c76b45;
+  --terracotta-deep: #a8542f;
+  --gold-sun: #e8b547;
+  --shade-blue: #4a5566;
+  --charcoal: #1a1814;
+
+  --grain-url: url("data:image/svg+xml;utf8,%3Csvg viewBox='0 0 240 240' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.05 0 0 0 0 0.04 0 0 0 0 0.02 0 0 0 0.55 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
+  --color-bone: var(--bone);
+  --color-bone-soft: var(--bone-soft);
+  --color-bone-deep: var(--bone-deep);
+  --color-ink: var(--ink);
+  --color-ink-soft: var(--ink-soft);
+  --color-terracotta: var(--terracotta);
+  --color-terracotta-deep: var(--terracotta-deep);
+  --color-gold-sun: var(--gold-sun);
+  --color-shade-blue: var(--shade-blue);
+  --color-charcoal: var(--charcoal);
+
+  --font-display: var(--font-fraunces);
   --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+}
+
+html,
+body {
+  background: var(--bone);
+  color: var(--ink);
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
+  font-family: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  font-feature-settings: "ss01", "cv11";
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
 }
 
-button,
-input {
-  border-radius: 8px;
+.font-display {
+  font-family: var(--font-fraunces), ui-serif, Georgia, serif;
+  font-feature-settings: "ss01", "ss02", "ss03";
+  letter-spacing: -0.01em;
+}
+
+.grain::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image: var(--grain-url);
+  background-size: 240px 240px;
+  opacity: 0.35;
+  mix-blend-mode: multiply;
+  pointer-events: none;
+  z-index: 1;
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, var(--ink) 18%, transparent);
+  border-radius: 999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: color-mix(in srgb, var(--ink) 32%, transparent);
+}
+
+@keyframes fts-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.fts-fade-up {
+  animation: fts-fade-up 480ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+
+@keyframes fts-sun-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.fts-sun-spin {
+  animation: fts-sun-spin 18s linear infinite;
+}
+
+@keyframes fts-pulse {
+  0%,
+  100% {
+    opacity: 0.9;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.08);
+  }
+}
+
+.fts-pulse {
+  animation: fts-pulse 1800ms ease-in-out infinite;
+}
+
+.fts-caret::after {
+  content: "▍";
+  margin-left: 2px;
+  color: color-mix(in srgb, var(--terracotta) 80%, transparent);
+  animation: fts-pulse 900ms ease-in-out infinite;
+}
+
+.mapboxgl-canvas {
+  outline: none;
+}
+
+.mapboxgl-map {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+.mapboxgl-canvas-container,
+.mapboxgl-canvas {
+  position: absolute;
+  inset: 0;
+}
+
+.mapboxgl-canvas {
+  width: 100% !important;
+  height: 100% !important;
+}
+
+.mapboxgl-ctrl-attrib {
+  background: color-mix(in srgb, var(--bone) 85%, transparent) !important;
+  font-family: var(--font-geist-sans), sans-serif !important;
+  font-size: 10px !important;
 }

@@ -88,8 +88,14 @@ class FollowTheShadeDataSources:
             return cached
 
         if self.data_mode == "mock":
+            cafes = [
+                cafe
+                for cafe in self.seed_cafes
+                if _distance_m(center, cafe["terrace_point"]) <= radius_m
+            ]
+            cafes.sort(key=lambda cafe: _distance_m(center, cafe["terrace_point"]))
             bundle = CafeCandidateBundle(
-                cafes=list(self.seed_cafes),
+                cafes=cafes[:limit],
                 source_notes=["Cafe data from mock seed file assets/split_cafe_seed.json."],
                 uncertainty_notes=[
                     "Cafe locations and outdoor seating are seed data for frontend development."

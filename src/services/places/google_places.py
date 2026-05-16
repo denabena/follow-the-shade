@@ -24,12 +24,12 @@ class GooglePlacesClient:
     ) -> list[dict[str, Any]]:
         payload = {
             "includedTypes": ["cafe"],
-            "maxResultCount": min(max_results, 12),
+            "maxResultCount": max_results,
             "rankPreference": "POPULARITY",
             "locationRestriction": {
                 "circle": {
                     "center": {"latitude": lat, "longitude": lng},
-                    "radius": float(min(max(radius_m, 100), 2000)),
+                    "radius": float(radius_m),
                 }
             },
         }
@@ -39,11 +39,11 @@ class GooglePlacesClient:
             "X-Goog-FieldMask": (
                 "places.id,places.displayName,places.formattedAddress,"
                 "places.location,places.rating,places.userRatingCount,"
-                "places.currentOpeningHours,places.googleMapsUri,places.outdoorSeating"
+                "places.regularOpeningHours,places.googleMapsUri,places.outdoorSeating"
             ),
         }
         try:
-            async with httpx.AsyncClient(timeout=12.0) as client:
+            async with httpx.AsyncClient(timeout=20.0) as client:
                 response = await client.post(NEARBY_URL, json=payload, headers=headers)
                 response.raise_for_status()
                 data = response.json()
@@ -54,30 +54,26 @@ class GooglePlacesClient:
         cafes = []
         for place in data.get("places", []):
             location = place.get("location", {})
-            lat_value = location.get("latitude")
-            lng_value = location.get("longitude")
-            if lat_value is None or lng_value is None:
+            lat_v = location.get("latitude")
+            lng_v = location.get("longitude")
+            if lat_v is None or lng_v is None:
                 continue
-
             display = place.get("displayName", {})
             name = display.get("text") if isinstance(display, dict) else str(display)
-            open_hours = place.get("currentOpeningHours") or {}
-            outdoor_seating = place.get("outdoorSeating")
             cafes.append(
                 {
                     "id": f"google:{place.get('id', '')}",
-                    "name": name or "Unnamed Split cafe",
+                    "name": name or "Cafe",
                     "provider": "google_places",
-                    "location": {"lat": float(lat_value), "lng": float(lng_value)},
-                    "terrace_point": {"lat": float(lat_value), "lng": float(lng_value)},
-                    "address": place.get("formattedAddress") or "Split, Croatia",
+                    "location": {"lat": lat_v, "lng": lng_v},
+                    "terrace_point": {"lat": lat_v, "lng": lng_v},
+                    "address": place.get("formattedAddress"),
                     "rating": place.get("rating"),
                     "user_rating_count": place.get("userRatingCount"),
                     "google_maps_uri": place.get("googleMapsUri"),
-                    "is_open_for_window": open_hours.get("openNow", True),
-                    "outdoor_seating": outdoor_seating,
+                    "outdoor_seating": place.get("outdoorSeating"),
                     "outdoor_seating_confidence": "medium"
-                    if outdoor_seating is True
+                    if place.get("outdoorSeating") is True
                     else "unknown",
                 }
             )

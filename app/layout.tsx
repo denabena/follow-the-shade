@@ -1,21 +1,29 @@
-import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
-import "./globals.css";
+import type { Metadata } from "next"
+import { Fraunces, Geist } from "next/font/google"
+import "mapbox-gl/dist/mapbox-gl.css"
+import "./globals.css"
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
   subsets: ["latin"],
-});
+  display: "swap"
+})
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
+const fraunces = Fraunces({
+  variable: "--font-fraunces",
   subsets: ["latin"],
-});
+  display: "swap",
+  axes: ["SOFT", "WONK", "opsz"]
+})
 
 export const metadata: Metadata = {
-  title: "Follow the Shade",
-  description: "Conversational Split cafe sun and shade finder.",
-};
+  title: "Follow the Shade — Split",
+  description:
+    "Find a Split cafe in the sun, or in the shade, for the exact hour you want to sit outside. The browser simulates real shadows cast by the city around you.",
+  icons: {
+    icon: "/favicon.ico"
+  }
+}
 
 export default function RootLayout({
   children,
@@ -25,9 +33,14 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${geistSans.variable} ${fraunces.variable} h-full antialiased`}
     >
-      <body className="min-h-full">{children}</body>
+      <body
+        className="bg-bone text-ink min-h-full"
+        suppressHydrationWarning
+      >
+        {children}
+      </body>
     </html>
-  );
+  )
 }

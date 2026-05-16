@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import logging
-import math
 from typing import Any
 
 import httpx
@@ -29,14 +28,9 @@ def estimate_height_m(tags: dict[str, Any]) -> tuple[float, str]:
     return 9.0, "default_estimate"
 
 
-def _bbox_from_center(
-    center: dict[str, float],
-    radius_m: float,
-) -> tuple[float, float, float, float]:
+def _bbox_from_center(center: dict[str, float], radius_m: float) -> tuple[float, float, float, float]:
     lat_delta = radius_m / 111_320.0
-    lng_delta = radius_m / (
-        111_320.0 * max(0.2, abs(math.cos(math.radians(center["lat"]))))
-    )
+    lng_delta = radius_m / (111_320.0 * max(0.2, abs(__import__("math").cos(__import__("math").radians(center["lat"])))))
     south = center["lat"] - lat_delta
     north = center["lat"] + lat_delta
     west = center["lng"] - lng_delta
@@ -44,14 +38,12 @@ def _bbox_from_center(
     return south, west, north, east
 
 
-def _build_polygon(
-    element: dict[str, Any],
-    nodes: dict[int, tuple[float, float]],
-) -> Polygon | None:
+def _build_polygon(element: dict[str, Any], nodes: dict[int, tuple[float, float]]) -> Polygon | None:
     if element["type"] != "way":
         return None
+    node_ids = element.get("nodes", [])
     coords = []
-    for node_id in element.get("nodes", []):
+    for node_id in node_ids:
         if node_id in nodes:
             lat, lng = nodes[node_id]
             coords.append((lng, lat))
@@ -77,6 +69,7 @@ class OverpassClient:
 [out:json][timeout:25];
 (
   way["building"]({south},{west},{north},{east});
+  relation["building"]({south},{west},{north},{east});
   way["building:part"]({south},{west},{north},{east});
 );
 out body;
@@ -112,13 +105,22 @@ out body center;
                 continue
             point = {"lat": lat, "lng": lng}
             if haversine_m(center, point) <= radius_m:
-                results.append({"lat": lat, "lng": lng, "tags": element.get("tags", {})})
+                results.append(
+                    {
+                        "lat": lat,
+                        "lng": lng,
+                        "tags": element.get("tags", {}),
+                    }
+                )
         return results
 
     async def _post(self, query: str) -> dict[str, Any]:
         try:
             async with httpx.AsyncClient(timeout=30.0) as client:
-                response = await client.post(self.base_url, data={"data": query})
+                response = await client.post(
+                    self.base_url,
+                    data={"data": query},
+                )
                 response.raise_for_status()
                 return response.json()
         except httpx.HTTPError as exc:
@@ -126,23 +128,27 @@ out body center;
             return {"elements": []}
 
     def _parse_buildings(self, data: dict[str, Any]) -> list[Building]:
+        elements = data.get("elements", [])
         nodes: dict[int, tuple[float, float]] = {}
         ways: list[dict[str, Any]] = []
 
-        for element in data.get("elements", []):
+        for element in elements:
             if element["type"] == "node":
                 nodes[element["id"]] = (element["lat"], element["lon"])
-            elif element["type"] == "way":
+            elif element["type"] in {"way", "relation"}:
                 tags = element.get("tags", {})
                 if tags.get("building") or tags.get("building:part"):
                     ways.append(element)
 
         buildings: list[Building] = []
+        height_estimated = False
         for element in ways:
             polygon = _build_polygon(element, nodes)
             if polygon is None:
                 continue
             height_m, confidence = estimate_height_m(element.get("tags", {}))
+            if confidence != "exact_tag":
+                height_estimated = True
             buildings.append(
                 Building(
                     polygon_wgs84=polygon,
@@ -150,4 +156,6 @@ out body center;
                     height_confidence=confidence,
                 )
             )
+        if height_estimated:
+            log.debug("Some building heights were estimated from OSM tags")
         return buildings[:200]

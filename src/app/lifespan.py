@@ -28,8 +28,8 @@ async def lifespan(app: FastAPI):
     upstream_cache = TtlCache(ttl_seconds=settings.FOLLOW_THE_SHADE_CACHE_TTL_SECONDS)
     tool = FindSplitCafeSunShadeTool(
         analysis_store=analysis_store,
-        seed_path=settings.SPLIT_CAFE_SEED_PATH,
         settings=settings,
+        seed_path=settings.SPLIT_CAFE_SEED_PATH,
         upstream_cache=upstream_cache,
     )
     agent = FollowTheShadeAgent(tool=tool)
