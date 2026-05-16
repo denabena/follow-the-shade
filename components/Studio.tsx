@@ -83,10 +83,7 @@ const Studio = () => {
         pushMessage({
           id: newId(),
           role: "bot",
-          text: answerFromMapPayload(
-            response.map_payload,
-            response.detected_language,
-          ),
+          text: answerFromMapPayload(response.map_payload),
           streaming: true,
           intent,
           results: { items: results, intent },

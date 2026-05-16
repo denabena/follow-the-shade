@@ -34,6 +34,8 @@ log = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/chat", tags=["chat"])
 
+SONIOX_LANGUAGE = "en"
+
 SONIOX_CONTEXT_TERMS = [
     "Follow the Shade",
     "Split",
@@ -83,10 +85,8 @@ def _build_soniox_stt_config() -> SpeechRealtimeConfig:
     )
 
 
-def _normalise_tts_language(language: str | None) -> str:
-    configured_language = language or settings.SONIOX_TTS_LANGUAGE
-    language_code = re.sub(r"[^a-z-]", "", configured_language.lower())
-    return language_code[:8] or "en"
+def _normalise_tts_language(_language: str | None = None) -> str:
+    return SONIOX_LANGUAGE
 
 
 def _normalise_tts_model(model: str | None = None) -> str:
@@ -96,10 +96,10 @@ def _normalise_tts_model(model: str | None = None) -> str:
     return configured_model or "tts-rt-v1"
 
 
-def _build_soniox_tts_config(language: str | None = None) -> SpeechTtsRealtimeConfig:
+def _build_soniox_tts_config() -> SpeechTtsRealtimeConfig:
     return SpeechTtsRealtimeConfig(
         model=_normalise_tts_model(),
-        language=_normalise_tts_language(language),
+        language=_normalise_tts_language(),
         voice=settings.SONIOX_TTS_VOICE,
         audio_format=settings.SONIOX_TTS_STREAM_AUDIO_FORMAT,
         sample_rate=settings.SONIOX_TTS_STREAM_SAMPLE_RATE,
@@ -267,7 +267,7 @@ async def create_soniox_tts_key(
     return SpeechTtsTemporaryKeyResponse(
         api_key=key_data["api_key"],
         expires_at=key_data["expires_at"],
-        tts=_build_soniox_tts_config(request.language),
+        tts=_build_soniox_tts_config(),
     )
 
 
@@ -298,22 +298,18 @@ async def chat_final_answer(
             analysis_id=raw_result.get("analysis_id"),
             map_payload=raw_result.get("map_payload"),
             sources=raw_result.get("sources", []),
-            detected_language=raw_result.get("detected_language"),
+            detected_language=SONIOX_LANGUAGE,
         )
     else:
         raise HTTPException(status_code=503, detail="Chat agent is not initialized.")
 
-    answer = normalize_map_answer(
-        result.answer,
-        result.map_payload,
-        result.detected_language,
-    )
+    answer = normalize_map_answer(result.answer, result.map_payload)
 
     audio = None
     if chat_request.include_audio:
         audio = await _generate_soniox_tts(
             answer=answer,
-            language=result.detected_language,
+            language=SONIOX_LANGUAGE,
         )
 
     return ChatResponse(
@@ -323,7 +319,7 @@ async def chat_final_answer(
         map_payload=result.map_payload,
         sources=result.sources,
         audio=audio,
-        detected_language=result.detected_language,
+        detected_language=SONIOX_LANGUAGE,
     )
 
 

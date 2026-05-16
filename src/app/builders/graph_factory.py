@@ -5,7 +5,6 @@ from langchain.messages import AIMessage, ToolMessage
 from langchain.tools import ToolRuntime, tool
 from langgraph.graph import END, START, StateGraph
 from langgraph.types import Command
-from pydantic import BaseModel
 
 from app.builders.agent_factory import AgentFactory
 from app.graph_state import MultiAgentState
@@ -73,14 +72,7 @@ class GraphFactory:
 
         def _make_node(agent_name: str):
             async def node_fn(state: MultiAgentState) -> Command:
-                result = await agents[agent_name].ainvoke(state)
-                structured_response = result.get("structured_response")
-                if isinstance(structured_response, BaseModel):
-                    result = {
-                        **result,
-                        "structured_response": structured_response.model_dump(),
-                    }
-                return result
+                return await agents[agent_name].ainvoke(state)
 
             node_fn.__name__ = f"call_{agent_name}"
             return node_fn

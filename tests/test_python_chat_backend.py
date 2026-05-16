@@ -303,9 +303,9 @@ def test_open_meteo_rain_blocks_usable_direct_sun() -> None:
 
     payload = response.json()
     assert response.status_code == 200
-    assert (
-        "not treating geometric sun patches as usable direct sun" in payload["answer"]
-    )
+    assert "Rain or heavy cloud keeps direct sun off the terrace" in payload["answer"]
+    assert "Open-Meteo" not in payload["answer"]
+    assert "estimated" not in payload["answer"].lower()
     result = payload["map_payload"]["results"][0]
     assert result["exposure"]["sun_ratio"] == 0.0
     assert all(sample["state"] == "shade" for sample in result["exposure"]["samples"])

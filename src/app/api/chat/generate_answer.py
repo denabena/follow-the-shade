@@ -2,16 +2,12 @@ from __future__ import annotations
 
 import json
 import logging
-import re
 from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any
 
-import json_repair
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage, ToolMessage
-from pydantic import ValidationError
 
-from app.api.chat.schemas import StructuredChatAnswer
 from services.follow_the_shade.thread_context import current_thread_id
 
 log = logging.getLogger(__name__)
@@ -19,75 +15,18 @@ log = logging.getLogger(__name__)
 MAX_RETRIES = 2
 DEFAULT_AGENT_RECURSION_LIMIT = 40
 
-_ANSWER_COPY = {
-    "en": {
-        "preferences": {
-            "sun": "sunny",
-            "shade": "shade-friendly",
-            "either": "outdoor",
-        },
-        "found": "I found {count} {preference} {options} near {location} for {window}.",
-        "none": "I could not find a solid {preference} match near {location} for {window}.",
-        "one": "option",
-        "many": "options",
-        "weather_block": "Open-Meteo shows rain or heavy cloud, so direct sun is not expected.",
-        "weather_cloud": "Cloud cover is high, so direct sun may feel weaker than the geometric shade model.",
-        "uncertainty": "Some terrace points or building heights are estimated, so treat the timing as approximate.",
+_ENGLISH_ANSWER_COPY = {
+    "preferences": {
+        "sun": "sunny",
+        "shade": "shade-friendly",
+        "either": "outdoor",
     },
-    "hr": {
-        "preferences": {"sun": "suncanih", "shade": "sjenovitih", "either": "vanjskih"},
-        "found": "Pronasao sam {count} {preference} opcija blizu {location} za {window}.",
-        "none": "Nisam nasao pouzdanu {preference} opciju blizu {location} za {window}.",
-        "one": "opcija",
-        "many": "opcija",
-        "weather_block": "Open-Meteo pokazuje kisu ili gustu naoblaku, pa izravno sunce nije ocekivano.",
-        "weather_cloud": "Naoblaka je visoka, pa ce izravno sunce biti slabije od same geometrije.",
-        "uncertainty": "Neke terase ili visine zgrada su procijenjene, pa vrijeme sjene uzmi kao priblizno.",
-    },
-    "it": {
-        "preferences": {"sun": "al sole", "shade": "all'ombra", "either": "all'aperto"},
-        "found": "Ho trovato {count} opzioni {preference} vicino a {location} per {window}.",
-        "none": "Non ho trovato una buona opzione {preference} vicino a {location} per {window}.",
-        "one": "opzione",
-        "many": "opzioni",
-        "weather_block": "Open-Meteo indica pioggia o molte nuvole, quindi il sole diretto non e previsto.",
-        "weather_cloud": "La copertura nuvolosa e alta, quindi il sole diretto puo sembrare piu debole del modello geometrico.",
-        "uncertainty": "Alcuni punti terrazza o altezze degli edifici sono stimati, quindi gli orari sono approssimativi.",
-    },
-    "de": {
-        "preferences": {"sun": "sonnige", "shade": "schattige", "either": "Outdoor-"},
-        "found": "Ich habe {count} {preference} Optionen nahe {location} fuer {window} gefunden.",
-        "none": "Ich habe keine solide {preference} Option nahe {location} fuer {window} gefunden.",
-        "one": "Option",
-        "many": "Optionen",
-        "weather_block": "Open-Meteo zeigt Regen oder dichte Bewoelkung, daher ist keine direkte Sonne zu erwarten.",
-        "weather_cloud": "Die Bewoelkung ist hoch, daher kann direkte Sonne schwaecher wirken als im geometrischen Modell.",
-        "uncertainty": "Einige Terrassenpunkte oder Gebaeudehoehen sind geschaetzt, daher sind die Zeiten ungefaehr.",
-    },
-    "sl": {
-        "preferences": {"sun": "soncnih", "shade": "sencnih", "either": "zunanjih"},
-        "found": "Nasel sem {count} {preference} moznosti blizu {location} za {window}.",
-        "none": "Nisem nasel zanesljive {preference} moznosti blizu {location} za {window}.",
-        "one": "moznost",
-        "many": "moznosti",
-        "weather_block": "Open-Meteo kaze dez ali gosto oblacnost, zato neposrednega sonca ni pricakovati.",
-        "weather_cloud": "Oblacnost je visoka, zato je neposredno sonce lahko sibkejse od geometrijskega modela.",
-        "uncertainty": "Nekatere terase ali visine stavb so ocenjene, zato so casi priblizni.",
-    },
-    "fr": {
-        "preferences": {
-            "sun": "ensoleillees",
-            "shade": "ombragees",
-            "either": "en terrasse",
-        },
-        "found": "J'ai trouve {count} options {preference} pres de {location} pour {window}.",
-        "none": "Je n'ai pas trouve de bonne option {preference} pres de {location} pour {window}.",
-        "one": "option",
-        "many": "options",
-        "weather_block": "Open-Meteo indique de la pluie ou une forte couverture nuageuse, donc le soleil direct n'est pas attendu.",
-        "weather_cloud": "La couverture nuageuse est elevee, donc le soleil direct peut sembler plus faible que dans le modele geometrique.",
-        "uncertainty": "Certains points de terrasse ou hauteurs de batiments sont estimes, donc les horaires restent approximatifs.",
-    },
+    "found": "I found {count} {preference} {options} near {location} for {window}.",
+    "none": "I could not find a solid {preference} match near {location} for {window}.",
+    "one": "option",
+    "many": "options",
+    "weather_block": "Rain or heavy cloud keeps direct sun off the terrace during that window.",
+    "weather_cloud": "Cloud cover keeps the sun muted during that window.",
 }
 
 
@@ -98,42 +37,6 @@ class ChatFlowResult:
     map_payload: dict[str, Any] | None = None
     sources: list[Any] = field(default_factory=list)
     detected_language: str | None = None
-
-
-def _strip_json_fence(output_text: str) -> str:
-    text = output_text.strip()
-    match = re.fullmatch(
-        r"```(?:json)?\s*(.*?)\s*```",
-        text,
-        flags=re.IGNORECASE | re.DOTALL,
-    )
-    return match.group(1).strip() if match else text
-
-
-def parse_structured_chat_answer(output_text: str) -> StructuredChatAnswer:
-    if not output_text.strip():
-        raise ValueError("Agent returned an empty final answer.")
-    try:
-        repaired_json = json_repair.loads(_strip_json_fence(output_text))
-    except Exception as exc:
-        raise ValueError(f"Failed to parse structured agent answer: {exc}") from exc
-    try:
-        return StructuredChatAnswer.model_validate(repaired_json)
-    except ValidationError as exc:
-        raise ValueError(f"Structured agent answer failed validation: {exc}") from exc
-
-
-def extract_structured_chat_answer(
-    response: dict[str, Any] | None,
-) -> StructuredChatAnswer | None:
-    if not response:
-        return None
-    structured_response = response.get("structured_response")
-    if structured_response is None:
-        return None
-    if isinstance(structured_response, StructuredChatAnswer):
-        return structured_response
-    return StructuredChatAnswer.model_validate(structured_response)
 
 
 def _build_agent_messages(
@@ -151,7 +54,6 @@ def _build_agent_messages(
 def normalize_map_answer(
     answer: str,
     map_payload: dict[str, Any] | None,
-    detected_language: str | None = None,
 ) -> str:
     if not isinstance(map_payload, dict):
         return answer.strip()
@@ -161,10 +63,13 @@ def normalize_map_answer(
     if not isinstance(request, dict) or not isinstance(results, list):
         return answer.strip()
 
-    language = detected_language if detected_language in _ANSWER_COPY else "en"
-    copy = _ANSWER_COPY[language]
+    copy = _ENGLISH_ANSWER_COPY
     preferences = copy["preferences"]
-    preference = preferences.get(request.get("preference"), preferences["either"])
+    requested_preference = request.get("preference")
+    weather_state = _weather_state(results)
+    if requested_preference == "sun" and weather_state == "blocked":
+        requested_preference = "either"
+    preference = preferences.get(requested_preference, preferences["either"])
     location = request.get("location_label") or "Split"
     window = _format_window(request.get("start"), request.get("end"))
     count = len(results)
@@ -189,11 +94,9 @@ def normalize_map_answer(
             )
         ]
 
-    weather_sentence = _weather_sentence(results, copy)
+    weather_sentence = _weather_sentence(weather_state, copy)
     if weather_sentence:
         sentences.append(weather_sentence)
-    if _has_estimated_geometry(map_payload):
-        sentences.append(copy["uncertainty"])
 
     return " ".join(sentences).strip() or answer.strip()
 
@@ -215,7 +118,7 @@ def _format_time(value: Any) -> str | None:
         return None
 
 
-def _weather_sentence(results: list[Any], copy: dict[str, Any]) -> str | None:
+def _weather_state(results: list[Any]) -> str | None:
     weather_values = [
         result.get("weather", {})
         for result in results
@@ -232,8 +135,16 @@ def _weather_sentence(results: list[Any], copy: dict[str, Any]) -> str | None:
         or (precipitation_probability is not None and precipitation_probability >= 70)
         or (cloud_cover is not None and cloud_cover >= 85)
     ):
-        return str(copy["weather_block"])
+        return "blocked"
     if cloud_cover is not None and cloud_cover > 60:
+        return "cloudy"
+    return None
+
+
+def _weather_sentence(weather_state: str | None, copy: dict[str, Any]) -> str | None:
+    if weather_state == "blocked":
+        return str(copy["weather_block"])
+    if weather_state == "cloudy":
         return str(copy["weather_cloud"])
     return None
 
@@ -249,27 +160,6 @@ def _max_float(items: list[dict[str, Any]], key: str) -> float | None:
         except (TypeError, ValueError):
             continue
     return max(values) if values else None
-
-
-def _has_estimated_geometry(map_payload: dict[str, Any]) -> bool:
-    text_parts = list(map(str, map_payload.get("source_notes") or []))
-    for result in map_payload.get("results") or []:
-        if not isinstance(result, dict):
-            continue
-        exposure = result.get("exposure") or {}
-        if isinstance(exposure, dict):
-            text_parts.extend(map(str, exposure.get("confidence_reasons") or []))
-    combined = " ".join(text_parts).lower()
-    return any(
-        token in combined
-        for token in (
-            "estimated",
-            "missing building",
-            "default height",
-            "approx",
-            "fallback",
-        )
-    )
 
 
 async def run_chat_flow(
@@ -315,7 +205,7 @@ async def run_chat_flow(
                             "The previous attempt failed while using a tool or generating "
                             "the answer. Retry using only the tools assigned to this agent. "
                             "If you already have a tool result, do not call the same tool again. "
-                            "Return only the required JSON object."
+                            "Return a concise English answer."
                         ),
                     )
                     continue
@@ -327,37 +217,11 @@ async def run_chat_flow(
                     detected_language="en",
                 )
 
-            ai_text = extract_ai_text(response) or ""
-            try:
-                structured_answer = extract_structured_chat_answer(response)
-                if structured_answer is None:
-                    structured_answer = parse_structured_chat_answer(ai_text)
-            except ValueError as exc:
-                log.error(
-                    "Agent returned invalid structured output on attempt %s: %s",
-                    attempt,
-                    exc,
-                )
-                if attempt < max_retries:
-                    incoming_messages = _build_agent_messages(
-                        user_input=input_text,
-                        retry_instruction=(
-                            "Your previous final output was not valid structured JSON. "
-                            "Return only a JSON object with exactly `response` and "
-                            "`detected_language`. Do not call the same tool again if the "
-                            "history already contains its result."
-                        ),
-                    )
-                    continue
-                return ChatFlowResult(
-                    answer="I could not format the answer cleanly. Please try again.",
-                    detected_language="en",
-                )
-
+            ai_text = (extract_ai_text(response) or "").strip()
             tool_payload = extract_tool_payload(response)
             return ChatFlowResult(
-                answer=structured_answer.response.strip(),
-                detected_language=structured_answer.detected_language,
+                answer=ai_text or "I checked that request for Split.",
+                detected_language="en",
                 analysis_id=tool_payload.get("analysis_id"),
                 map_payload=tool_payload.get("map_payload"),
                 sources=tool_payload.get("sources", []),

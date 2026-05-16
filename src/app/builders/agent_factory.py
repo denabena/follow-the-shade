@@ -3,7 +3,6 @@ from typing import Any
 
 from langchain.agents import create_agent
 
-from app.api.chat.schemas import StructuredChatAnswer
 from app.builders.model_factory import ModelFactory
 from app.builders.tool_registry import ToolRegistry
 
@@ -64,7 +63,5 @@ class AgentFactory:
             "system_prompt": agent_config.get("prompt", ""),
             "name": agent_name,
         }
-        if agent_config.get("structured_response"):
-            create_kwargs["response_format"] = StructuredChatAnswer
 
         return create_agent(**create_kwargs)

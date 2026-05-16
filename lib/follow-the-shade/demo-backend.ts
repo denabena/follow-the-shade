@@ -3,7 +3,6 @@ import type {
   AnalysisRecord,
   ChatRequest,
   ChatResponse,
-  DetectedLanguage,
   ExposurePreference,
   ExposureSample,
   ExposureState,
@@ -117,7 +116,7 @@ export async function buildDemoChatResponse(
   }
 
   const normalized = normalize(message);
-  const detectedLanguage = detectLanguage(normalized);
+  const detectedLanguage = "en";
 
   if (isOutsideSplit(normalized)) {
     return {
@@ -413,9 +412,7 @@ function isOutsideSplit(query: string): boolean {
   );
 }
 
-function parseTimeWindow(
-  query: string,
-): {
+function parseTimeWindow(query: string): {
   start: string;
   end: string;
   period: "morning" | "lunch" | "afternoon";
@@ -509,22 +506,6 @@ function parseDateLabel(query: string): string {
   }
 
   return date.toISOString().slice(0, 10);
-}
-
-function detectLanguage(query: string): DetectedLanguage {
-  if (/\b(ciao|ombra|sole|terrazza)\b/.test(query)) {
-    return "it";
-  }
-
-  if (/\b(schatten|sonne|kaffee)\b/.test(query)) {
-    return "de";
-  }
-
-  if (/\b(hlad|sunce|kava|terasa)\b/.test(query)) {
-    return "hr";
-  }
-
-  return "en";
 }
 
 function normalize(value: string): string {

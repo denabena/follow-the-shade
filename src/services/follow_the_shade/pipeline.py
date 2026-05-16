@@ -36,7 +36,7 @@ log = logging.getLogger(__name__)
 
 Preference = Literal["sun", "shade", "either"]
 Period = Literal["morning", "lunch", "afternoon"]
-Language = Literal["hr", "en", "it", "de", "sl", "fr"]
+Language = Literal["en"]
 ZAGREB_TZ = ZoneInfo("Europe/Zagreb")
 
 
@@ -248,8 +248,12 @@ class FollowTheShadePipeline:
         }
         self._remember_thread_context(thread_id, parsed)
 
+        weather_blocks_direct_sun = _weather_blocks_direct_sun(weather)
         preference_label = (
-            "outdoor" if parsed.preference == "either" else parsed.preference
+            "outdoor"
+            if parsed.preference == "either"
+            or (parsed.preference == "sun" and weather_blocks_direct_sun)
+            else parsed.preference
         )
         weather_note = _weather_answer_note(weather)
         answer = (
@@ -569,7 +573,7 @@ class FollowTheShadePipeline:
     def parse_request(self, query: str, now: datetime | None = None) -> ParsedRequest:
         normalized = self._normalize(query)
         now_zagreb = (now or datetime.now(ZAGREB_TZ)).astimezone(ZAGREB_TZ)
-        language = _detect_language(normalized)
+        language: Language = "en"
         preference, preference_explicit = _parse_preference(normalized)
         area, location_explicit = _find_area(normalized)
         date_anchor, date_explicit = _parse_date(normalized, now_zagreb)
@@ -980,31 +984,23 @@ def _weather_block_reason(weather: dict[str, Any]) -> str:
     precipitation_probability = weather.get("precipitation_probability_max")
     cloud_cover = weather.get("cloud_cover_avg")
     if precipitation_mm is not None and float(precipitation_mm) > 0:
-        return "Open-Meteo forecasts precipitation during the window"
+        return "precipitation during the window"
     if precipitation_probability is not None and float(precipitation_probability) >= 70:
-        return "Open-Meteo precipitation probability makes direct sun unlikely"
+        return "high precipitation probability during the window"
     if cloud_cover is not None and float(cloud_cover) >= 85:
-        return "Open-Meteo cloud cover makes direct sun unlikely"
-    return "Open-Meteo weather makes direct sun unlikely"
+        return "heavy cloud cover during the window"
+    return "weather blocks direct sun during the window"
 
 
 def _weather_answer_note(weather: dict[str, Any]) -> str:
     if _weather_blocks_direct_sun(weather):
-        return " Open-Meteo shows rain or heavy cloud for that window, so I am not treating geometric sun patches as usable direct sun."
+        return (
+            " Rain or heavy cloud keeps direct sun off the terrace during that window."
+        )
     cloud_cover = weather.get("cloud_cover_avg")
     if cloud_cover is not None and float(cloud_cover) > 60:
-        return " Forecast cloud cover is high, so direct sun may feel weaker than the geometric analysis."
+        return " Cloud cover keeps the sun muted during that window."
     return ""
-
-
-def _detect_language(query: str) -> Language:
-    if re.search(r"\b(ciao|ombra|sole|terrazza)\b", query):
-        return "it"
-    if re.search(r"\b(schatten|sonne|kaffee)\b", query):
-        return "de"
-    if re.search(r"\b(hlad|sunce|kava|terasa)\b", query):
-        return "hr"
-    return "en"
 
 
 def _short_time(value: datetime) -> str:
