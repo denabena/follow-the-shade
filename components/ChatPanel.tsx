@@ -81,6 +81,8 @@ type Props = {
   onShadeSampleTime?: (time: Date) => void;
   onOpenPreferences: () => void;
   onPrimeVoicePlayback?: () => void | Promise<void>;
+  /** Restores centered chat hero + hides split map (same as first load). */
+  onResetToStartingLook: () => void;
 };
 
 const ChatPanel = ({
@@ -96,6 +98,7 @@ const ChatPanel = ({
   onShadeSampleTime,
   onOpenPreferences,
   onPrimeVoicePlayback,
+  onResetToStartingLook,
 }: Props) => {
   const { userId } = useAuth();
   const [draft, setDraft] = useState("");
@@ -312,6 +315,7 @@ const ChatPanel = ({
         weather={weather}
         weatherStatus={weatherStatus}
         onOpenPreferences={onOpenPreferences}
+        onResetToStartingLook={onResetToStartingLook}
       />
 
       <div
@@ -460,12 +464,14 @@ const Header = ({
   weather,
   weatherStatus,
   onOpenPreferences,
+  onResetToStartingLook,
 }: {
   dayTimeLabel: string;
   signedIn: boolean;
   weather: WeatherReport | null;
   weatherStatus: "loading" | "ready" | "error";
   onOpenPreferences: () => void;
+  onResetToStartingLook: () => void;
 }) => (
   <header className="relative z-[2] px-4 pb-2 pt-5 sm:px-7 sm:pb-3 sm:pt-7 lg:px-10">
     <p className="font-mono text-[9px] uppercase tracking-[0.28em] text-terracotta-deep sm:text-[10px] sm:tracking-[0.32em]">
@@ -473,7 +479,14 @@ const Header = ({
     </p>
     <div className="mt-1 flex items-center justify-between gap-3 sm:mt-1.5 sm:gap-4">
       <h1 className="font-display -translate-x-[2px] min-w-0 flex-1 text-[1.625rem] leading-[1.06] tracking-tight text-ink sm:text-[32px] sm:leading-[1.05] lg:text-[34px]">
-        Follow the Shade
+        <button
+          type="button"
+          onClick={onResetToStartingLook}
+          aria-label="Follow the Shade — back to start"
+          className="max-w-full rounded-sm bg-transparent p-0 text-left font-[inherit] leading-[inherit] tracking-[inherit] text-[inherit] outline-none transition-colors hover:text-ink/85 focus-visible:ring-2 focus-visible:ring-terracotta/40 focus-visible:ring-offset-2 focus-visible:ring-offset-bone"
+        >
+          Follow the Shade
+        </button>
       </h1>
       <div className="shrink-0">
         {signedIn ? (
