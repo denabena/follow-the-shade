@@ -99,7 +99,15 @@ const ChatPanel = ({
     "loading"
   )
   const scrollerRef = useRef<HTMLDivElement>(null)
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
   const recognitionRef = useRef<SpeechRecognitionLike | null>(null)
+
+  useEffect(() => {
+    const el = textareaRef.current
+    if (!el) return
+    el.style.height = "auto"
+    el.style.height = `${el.scrollHeight}px`
+  }, [draft])
 
   useEffect(() => {
     const el = scrollerRef.current
@@ -366,8 +374,9 @@ const ChatPanel = ({
             <div className="fts-loading-bar-glow" />
           </div>
         ) : null}
-        <div className="flex items-center gap-3">
+        <div className="flex items-end gap-3">
           <textarea
+            ref={textareaRef}
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
             onKeyDown={handleKeyDown}
@@ -382,7 +391,7 @@ const ChatPanel = ({
             }
             aria-label="Message"
             className={cn(
-              "min-h-[44px] max-h-32 flex-1 resize-none bg-transparent py-2.5 text-[15px] leading-5 text-ink outline-none placeholder:text-ink/35",
+              "min-h-[44px] flex-1 resize-none overflow-hidden bg-transparent py-2.5 text-[15px] leading-5 text-ink outline-none placeholder:text-ink/35",
               "disabled:opacity-60"
             )}
           />
