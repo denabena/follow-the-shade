@@ -1,0 +1,138 @@
+[
+  {
+    "id": "demo:riva-shade-table",
+    "name": "Riva Shade Table",
+    "area": "Riva",
+    "provider": "demo_seed",
+    "location": { "lat": 43.50818, "lng": 16.43916 },
+    "terrace_point": { "lat": 43.50813, "lng": 16.43898 },
+    "address": "Riva, Split",
+    "rating": 4.6,
+    "user_rating_count": 410,
+    "outdoor_seating_confidence": "medium",
+    "patterns": {
+      "morning": ["sun", "sun", "sun", "sun"],
+      "lunch": ["sun", "shade", "shade"],
+      "afternoon": ["shade", "shade", "sun", "shade", "shade"]
+    }
+  },
+  {
+    "id": "demo:palace-courtyard",
+    "name": "Palace Courtyard Terrace",
+    "area": "Diocletian Palace",
+    "provider": "demo_seed",
+    "location": { "lat": 43.50859, "lng": 16.44088 },
+    "terrace_point": { "lat": 43.50851, "lng": 16.44074 },
+    "address": "Diocletian Palace, Split",
+    "rating": 4.5,
+    "user_rating_count": 290,
+    "outdoor_seating_confidence": "medium",
+    "patterns": {
+      "morning": ["shade", "sun", "sun", "sun"],
+      "lunch": ["shade", "shade", "sun"],
+      "afternoon": ["shade", "shade", "shade", "shade", "shade"]
+    }
+  },
+  {
+    "id": "demo:marmontova-arcade",
+    "name": "Marmontova Arcade Cafe",
+    "area": "Marmontova",
+    "provider": "demo_seed",
+    "location": { "lat": 43.51018, "lng": 16.4382 },
+    "terrace_point": { "lat": 43.51008, "lng": 16.43807 },
+    "address": "Marmontova, Split",
+    "rating": 4.4,
+    "user_rating_count": 330,
+    "outdoor_seating_confidence": "medium",
+    "patterns": {
+      "morning": ["sun", "sun", "shade", "shade"],
+      "lunch": ["shade", "shade", "shade"],
+      "afternoon": ["shade", "shade", "shade", "shade", "sun"]
+    }
+  },
+  {
+    "id": "demo:prokurative-corner",
+    "name": "Prokurative Corner Terrace",
+    "area": "Prokurative",
+    "provider": "demo_seed",
+    "location": { "lat": 43.50952, "lng": 16.43704 },
+    "terrace_point": { "lat": 43.50942, "lng": 16.4369 },
+    "address": "Trg Republike, Split",
+    "rating": 4.3,
+    "user_rating_count": 250,
+    "outdoor_seating_confidence": "medium",
+    "patterns": {
+      "morning": ["sun", "sun", "sun", "shade"],
+      "lunch": ["sun", "shade", "shade"],
+      "afternoon": ["shade", "shade", "shade", "shade", "shade"]
+    }
+  },
+  {
+    "id": "demo:matejuska-steps",
+    "name": "Matejuska Steps Cafe",
+    "area": "Matejuska",
+    "provider": "demo_seed",
+    "location": { "lat": 43.50758, "lng": 16.4355 },
+    "terrace_point": { "lat": 43.50746, "lng": 16.43537 },
+    "address": "Matejuska, Split",
+    "rating": 4.4,
+    "user_rating_count": 180,
+    "outdoor_seating_confidence": "low",
+    "patterns": {
+      "morning": ["sun", "sun", "sun", "sun"],
+      "lunch": ["sun", "sun", "shade"],
+      "afternoon": ["sun", "shade", "shade", "shade", "shade"]
+    }
+  },
+  {
+    "id": "demo:bacvice-morning",
+    "name": "Bacvice Morning Terrace",
+    "area": "Bacvice",
+    "provider": "demo_seed",
+    "location": { "lat": 43.5039, "lng": 16.4514 },
+    "terrace_point": { "lat": 43.50376, "lng": 16.45162 },
+    "address": "Bacvice, Split",
+    "rating": 4.2,
+    "user_rating_count": 370,
+    "outdoor_seating_confidence": "medium",
+    "patterns": {
+      "morning": ["sun", "sun", "sun", "sun"],
+      "lunch": ["sun", "sun", "shade"],
+      "afternoon": ["sun", "sun", "shade", "shade", "shade"]
+    }
+  },
+  {
+    "id": "demo:varos-lane",
+    "name": "Varos Lane Terrace",
+    "area": "Varos",
+    "provider": "demo_seed",
+    "location": { "lat": 43.50942, "lng": 16.43364 },
+    "terrace_point": { "lat": 43.50931, "lng": 16.43348 },
+    "address": "Varos, Split",
+    "rating": 4.7,
+    "user_rating_count": 120,
+    "outdoor_seating_confidence": "low",
+    "patterns": {
+      "morning": ["shade", "shade", "sun", "sun"],
+      "lunch": ["shade", "shade", "shade"],
+      "afternoon": ["shade", "shade", "shade", "shade", "shade"]
+    }
+  },
+  {
+    "id": "demo:znjan-sea-view",
+    "name": "Znjan Sea View Cafe",
+    "area": "Znjan",
+    "provider": "demo_seed",
+    "location": { "lat": 43.50231, "lng": 16.48654 },
+    "terrace_point": { "lat": 43.50218, "lng": 16.48672 },
+    "address": "Znjan, Split",
+    "rating": 4.3,
+    "user_rating_count": 510,
+    "outdoor_seating_confidence": "medium",
+    "patterns": {
+      "morning": ["sun", "sun", "sun", "sun"],
+      "lunch": ["sun", "sun", "sun"],
+      "afternoon": ["sun", "sun", "sun", "shade", "shade"]
+    }
+  }
+]
