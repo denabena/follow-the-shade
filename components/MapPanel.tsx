@@ -379,25 +379,10 @@ const walkingRouteDisplayEnd = async (
   return last ?? [cafe.lng, cafe.lat]
 }
 
-const hideAddressLabels = (map: MapboxMap) => {
+/** Hide every symbol layer so the basemap stays texture-only (no text/icons). */
+const hideAllSymbolLayers = (map: MapboxMap) => {
   map.getStyle().layers?.forEach((layer) => {
     if (layer.type !== "symbol") return
-
-    const id = layer.id.toLowerCase()
-    const sourceLayer =
-      "source-layer" in layer
-        ? String(layer["source-layer"] ?? "").toLowerCase()
-        : ""
-
-    const looksLikeBuildingNumber =
-      id.includes("address") ||
-      id.includes("house") ||
-      id.includes("housenum") ||
-      id.includes("building-number") ||
-      sourceLayer.includes("address")
-
-    if (!looksLikeBuildingNumber) return
-
     try {
       map.setLayoutProperty(layer.id, "visibility", "none")
     } catch {
@@ -471,11 +456,20 @@ const MapPanel = forwardRef<MapPanelHandle, Props>(function MapPanel(
         config: {
           basemap: {
             lightPreset: "day",
+            theme: "default",
             showPointOfInterestLabels: false,
             showRoadLabels: false,
             showTransitLabels: false,
             showPlaceLabels: false,
-            show3dObjects: true
+            showPedestrianRoads: true,
+            show3dObjects: true,
+            show3dBuildings: true,
+            show3dFacades: true,
+            show3dTrees: true,
+            show3dLandmarks: true,
+            showLandmarkIcons: false,
+            showLandmarkIconLabels: false,
+            showIndoorLabels: false
           }
         },
         center: SPLIT_CENTER,
@@ -510,7 +504,7 @@ const MapPanel = forwardRef<MapPanelHandle, Props>(function MapPanel(
           color: "white",
           intensity: 0.5
         })
-        hideAddressLabels(map)
+        hideAllSymbolLayers(map)
 
         map.addLayer(
           {
