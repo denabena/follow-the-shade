@@ -1,13 +1,19 @@
 import type { TimelinePoint } from "@/lib/types"
+import { cn } from "@/lib/cn"
 import { formatClock } from "@/lib/format"
-
 type Props = {
   timeline: TimelinePoint[]
   windowStart: Date
   windowEnd: Date
+  onSampleSelect?: (time: Date) => void
 }
 
-const SunTimelineBar = ({ timeline, windowStart, windowEnd }: Props) => {
+const SunTimelineBar = ({
+  timeline,
+  windowStart,
+  windowEnd,
+  onSampleSelect,
+}: Props) => {
   if (timeline.length === 0) return null
 
   const totalMs = windowEnd.getTime() - windowStart.getTime()
@@ -17,11 +23,20 @@ const SunTimelineBar = ({ timeline, windowStart, windowEnd }: Props) => {
     <div className="w-full">
       <div className="flex h-2.5 w-full overflow-hidden rounded-full border border-ink/10 bg-bone-deep/60">
         {timeline.map((p, i) => (
-          <span
+          <button
             key={i}
-            className={p.inSun ? "h-full bg-gold-sun" : "h-full bg-ink/85"}
+            type="button"
+            className={cn(
+              "h-full min-w-0 shrink-0 border-0 p-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-terracotta focus-visible:ring-offset-1 focus-visible:ring-offset-bone",
+              p.inSun ? "bg-gold-sun" : "bg-ink/85",
+            )}
             style={{ width: `${cellWidth}%` }}
-            title={`${formatClock(p.t)} — ${p.inSun ? "sun" : "shade"}`}
+            title={`${formatClock(p.t)} — ${p.inSun ? "sun" : "shade"} · click to preview on map`}
+            aria-label={`Preview map shadows at ${formatClock(p.t)}, ${p.inSun ? "sun" : "shade"}`}
+            onClick={(e) => {
+              e.stopPropagation()
+              onSampleSelect?.(p.t)
+            }}
           />
         ))}
       </div>

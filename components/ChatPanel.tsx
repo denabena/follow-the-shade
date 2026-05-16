@@ -5,6 +5,7 @@ import Link from "next/link"
 import { useEffect, useRef, useState } from "react"
 import type { Cafe } from "@/lib/types"
 import { cn } from "@/lib/cn"
+import { formatZagrebDayTimeLabel } from "@/lib/format"
 import { suggestions, type SuggestionId } from "@/lib/intent"
 import ChatMessage, { type ChatMessageData } from "./ChatMessage"
 
@@ -69,6 +70,8 @@ type Props = {
   onSuggestion: (id: SuggestionId) => void
   onStreamComplete: (messageId: string) => void
   onCafeSelect: (cafe: Cafe) => void
+  /** Updates map shadow simulator to match a timeline sample (café result cards). */
+  onShadeSampleTime?: (time: Date) => void
   onOpenPreferences: () => void
 }
 
@@ -82,6 +85,7 @@ const ChatPanel = ({
   onSuggestion,
   onStreamComplete,
   onCafeSelect,
+  onShadeSampleTime,
   onOpenPreferences
 }: Props) => {
   const { userId } = useAuth()
@@ -168,11 +172,7 @@ const ChatPanel = ({
     }
   }, [])
 
-  const dayTimeLabel = new Intl.DateTimeFormat(undefined, {
-    weekday: "long",
-    hour: "2-digit",
-    minute: "2-digit"
-  }).format(now)
+  const dayTimeLabel = formatZagrebDayTimeLabel(now)
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
@@ -298,6 +298,7 @@ const ChatPanel = ({
               message={m}
               onStreamComplete={() => onStreamComplete(m.id)}
               onCafeSelect={onCafeSelect}
+              onShadeSampleTime={onShadeSampleTime}
             />
           ))}
         </div>

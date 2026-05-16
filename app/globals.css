@@ -189,3 +189,12 @@ summary:hover {
   font-family: var(--font-geist-sans), sans-serif !important;
   font-size: 10px !important;
 }
+
+/* Cafe marker popup: compact card; scroll if needed */
+.fts-cafe-popup .mapboxgl-popup-content {
+  max-height: min(40dvh, 300px);
+  padding: 9px 11px;
+  overflow-x: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}

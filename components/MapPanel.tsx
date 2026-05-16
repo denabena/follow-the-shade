@@ -5,13 +5,15 @@ import {
   useEffect,
   useImperativeHandle,
   useRef,
-  useState
+  useState,
 } from "react"
 import type {
+  GeoJSONSource,
   LightsSpecification,
   Map as MapboxMap,
   Marker,
   Popup,
+  PopupOptions,
 } from "mapbox-gl"
 import type { Cafe, CafeResult, IntentArea } from "@/lib/types"
 import type { ShadeMapHandle } from "@/lib/shademap"
@@ -47,6 +49,35 @@ const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN ?? ""
 const SHADEMAP_KEY = process.env.NEXT_PUBLIC_SHADEMAP_API_KEY ?? ""
 
 const SPLIT_CENTER: [number, number] = [16.4402, 43.5081]
+
+const CAFE_POPUP_OPTIONS = {
+  offset: 12,
+  closeButton: false,
+  closeOnClick: true,
+  maxWidth: "min(220px, 88vw)",
+  className: "fts-cafe-popup",
+  focusAfterOpen: false,
+} satisfies PopupOptions
+
+/** One fresh fix — helps when watchPosition has not fired yet. */
+function requestFreshUserLngLat(): Promise<[number, number] | null> {
+  if (typeof navigator === "undefined" || !navigator.geolocation) {
+    return Promise.resolve(null)
+  }
+  return new Promise((resolve) => {
+    navigator.geolocation.getCurrentPosition(
+      (pos) =>
+        resolve([pos.coords.longitude, pos.coords.latitude]),
+      () => resolve(null),
+      { enableHighAccuracy: true, maximumAge: 0, timeout: 15_000 },
+    )
+  })
+}
+
+/** GeoJSON source id; line + soft halo layers (ids must differ). */
+const CAFE_ROUTE_SOURCE_ID = "cafe-route"
+const CAFE_ROUTE_HALO_LAYER_ID = "cafe-route-halo"
+const CAFE_ROUTE_LAYER_ID = "cafe-route-line"
 
 const standardLights: LightsSpecification[] = [
   {
@@ -116,36 +147,85 @@ const googleMapsUrlForCafe = (cafe: Cafe): string => {
 const buildCafePopupDom = (cafe: Cafe): HTMLElement => {
   const root = document.createElement("div")
   root.className =
-    "flex w-64 max-w-[min(18rem,88vw)] flex-col gap-2.5 text-left text-ink"
+    "box-border flex w-full min-w-0 max-w-full flex-col gap-1.5 text-left text-ink"
 
   const frame = document.createElement("div")
   frame.className =
-    "relative aspect-[4/3] w-full overflow-hidden rounded-lg border border-ink/10 bg-bone-deep"
+    "relative aspect-[5/4] w-full min-w-0 max-w-full overflow-hidden rounded-md border border-ink/10 bg-bone-deep"
 
   if (cafe.place_photo_p) {
+    const loader = document.createElement("div")
+    loader.className =
+      "absolute inset-0 z-10 flex flex-col items-center justify-center gap-2 bg-bone-deep transition-opacity duration-300 ease-out"
+    loader.setAttribute("role", "status")
+    loader.setAttribute("aria-live", "polite")
+
+    const spin = document.createElement("div")
+    spin.className =
+      "h-6 w-6 shrink-0 rounded-full border-2 border-ink/12 border-t-terracotta border-r-terracotta/35 animate-spin"
+    spin.setAttribute("aria-hidden", "true")
+
+    const caption = document.createElement("span")
+    caption.className =
+      "font-mono text-[9px] uppercase tracking-[0.2em] text-ink/45"
+    caption.textContent = "Loading photo"
+
+    loader.appendChild(spin)
+    loader.appendChild(caption)
+
     const img = document.createElement("img")
     img.src = `/places/photo?p=${encodeURIComponent(cafe.place_photo_p)}`
     img.alt = ""
-    img.className = "h-full w-full object-cover"
+    img.className =
+      "relative z-0 block h-full w-full max-w-full object-cover object-center"
     img.loading = "lazy"
     img.decoding = "async"
+
+    let dismissed = false
+    const dismissLoader = () => {
+      if (dismissed) return
+      dismissed = true
+      loader.classList.add("pointer-events-none", "opacity-0")
+      window.setTimeout(() => loader.remove(), 320)
+    }
+
+    img.addEventListener("load", dismissLoader, { once: true })
+    img.addEventListener(
+      "error",
+      () => {
+        dismissLoader()
+        img.remove()
+        const fallback = document.createElement("div")
+        fallback.className =
+          "flex h-full min-h-[3.25rem] w-full min-w-0 max-w-full items-center justify-center font-display text-lg tracking-tight text-ink/30"
+        fallback.textContent = cafeNameInitials(cafe.name)
+        frame.appendChild(fallback)
+      },
+      { once: true },
+    )
+
+    frame.appendChild(loader)
     frame.appendChild(img)
+
+    requestAnimationFrame(() => {
+      if (img.complete && img.naturalHeight > 0) dismissLoader()
+    })
   } else {
     const placeholder = document.createElement("div")
     placeholder.className =
-      "flex h-full min-h-[5.5rem] w-full items-center justify-center font-display text-2xl tracking-tight text-ink/30"
+      "flex h-full min-h-[3.25rem] w-full min-w-0 max-w-full items-center justify-center font-display text-lg tracking-tight text-ink/30"
     placeholder.textContent = cafeNameInitials(cafe.name)
     frame.appendChild(placeholder)
   }
   root.appendChild(frame)
 
   const title = document.createElement("p")
-  title.className = "font-display text-[17px] leading-snug text-ink"
+  title.className = "min-w-0 font-display text-[13px] leading-snug text-ink"
   title.textContent = cafe.name
   root.appendChild(title)
 
   const sub = document.createElement("p")
-  sub.className = "text-[11px] font-medium uppercase tracking-[0.16em] text-ink/55"
+  sub.className = "text-[9px] font-medium uppercase tracking-[0.14em] text-ink/55"
   sub.textContent = cafe.neighborhood
   root.appendChild(sub)
 
@@ -154,16 +234,120 @@ const buildCafePopupDom = (cafe: Cafe): HTMLElement => {
   link.target = "_blank"
   link.rel = "noopener noreferrer"
   link.className =
-    "inline-flex w-fit items-center rounded-full border border-ink/25 px-3 py-1.5 text-[10.5px] font-medium uppercase tracking-[0.12em] text-ink/85 transition-colors hover:border-terracotta hover:text-terracotta"
+    "inline-flex w-fit max-w-full items-center rounded-full border border-ink/25 px-2 py-0.5 text-[9px] font-medium uppercase tracking-[0.1em] text-ink/85 transition-colors hover:border-terracotta hover:text-terracotta"
   link.textContent = "Open in Google Maps"
   root.appendChild(link)
 
   const attr = document.createElement("p")
-  attr.className = "mt-0.5 text-[9px] leading-snug text-ink/40"
+  attr.className = "mt-0 text-[8px] leading-snug text-ink/40"
   attr.textContent = "Photos and listing via Google"
   root.appendChild(attr)
 
   return root
+}
+
+const degenerateRouteAtCenter = (): GeoJSON.Feature<GeoJSON.LineString> => ({
+  type: "Feature",
+  properties: {},
+  geometry: {
+    type: "LineString",
+    coordinates: [SPLIT_CENTER, SPLIT_CENTER],
+  },
+})
+
+const removeCafeRouteFromMap = (map: MapboxMap) => {
+  if (map.getLayer(CAFE_ROUTE_LAYER_ID)) map.removeLayer(CAFE_ROUTE_LAYER_ID)
+  if (map.getLayer(CAFE_ROUTE_HALO_LAYER_ID))
+    map.removeLayer(CAFE_ROUTE_HALO_LAYER_ID)
+  if (map.getSource(CAFE_ROUTE_SOURCE_ID)) map.removeSource(CAFE_ROUTE_SOURCE_ID)
+}
+
+const addCafeRouteToMap = (map: MapboxMap) => {
+  if (map.getSource(CAFE_ROUTE_SOURCE_ID)) return
+  map.addSource(CAFE_ROUTE_SOURCE_ID, {
+    type: "geojson",
+    data: degenerateRouteAtCenter(),
+  })
+  map.addLayer({
+    id: CAFE_ROUTE_HALO_LAYER_ID,
+    type: "line",
+    source: CAFE_ROUTE_SOURCE_ID,
+    slot: "middle",
+    paint: {
+      "line-color": "#a8542f",
+      "line-width": 6,
+      "line-opacity": 0.35,
+      "line-occlusion-opacity": 0,
+      "line-blur": 0.5,
+    },
+  })
+  map.addLayer({
+    id: CAFE_ROUTE_LAYER_ID,
+    type: "line",
+    source: CAFE_ROUTE_SOURCE_ID,
+    slot: "middle",
+    paint: {
+      "line-color": "#c76b45",
+      "line-width": 3,
+      "line-opacity": 1,
+      "line-occlusion-opacity": 0,
+    },
+  })
+}
+
+const setCafeRouteCoordinates = (
+  map: MapboxMap,
+  coordinates: [number, number][],
+) => {
+  const src = map.getSource(CAFE_ROUTE_SOURCE_ID) as GeoJSONSource | undefined
+  if (!src) return
+  src.setData({
+    type: "Feature",
+    properties: {},
+    geometry: { type: "LineString", coordinates },
+  })
+}
+
+/** Mapbox Directions API walking profile; falls back to a straight segment on error. */
+const fetchWalkingRouteLeg = async (
+  from: [number, number],
+  to: [number, number],
+  accessToken: string,
+): Promise<[number, number][]> => {
+  if (!accessToken) return [from, to]
+  const segment = `${from[0]},${from[1]};${to[0]},${to[1]}`
+  try {
+    const url = new URL(
+      `https://api.mapbox.com/directions/v5/mapbox/walking/${segment}`,
+    )
+    url.searchParams.set("geometries", "geojson")
+    url.searchParams.set("overview", "full")
+    url.searchParams.set("access_token", accessToken)
+    const res = await fetch(url.toString())
+    if (!res.ok) return [from, to]
+    const json = (await res.json()) as {
+      routes?: { geometry?: { coordinates?: [number, number][] } }[]
+    }
+    const coords = json.routes?.[0]?.geometry?.coordinates
+    if (!coords || coords.length < 2) return [from, to]
+    return coords
+  } catch {
+    return [from, to]
+  }
+}
+
+const walkingRouteDisplayEnd = async (
+  from: [number, number],
+  cafe: Cafe,
+  accessToken: string,
+): Promise<[number, number]> => {
+  const leg = await fetchWalkingRouteLeg(
+    from,
+    [cafe.lng, cafe.lat],
+    accessToken,
+  )
+  const last = leg[leg.length - 1]
+  return last ?? [cafe.lng, cafe.lat]
 }
 
 const hideAddressLabels = (map: MapboxMap) => {
@@ -201,8 +385,14 @@ const MapPanel = forwardRef<MapPanelHandle, Props>(function MapPanel(
   const mapRef = useRef<MapboxMap | null>(null)
   const shadeRef = useRef<ShadeMapHandle | null>(null)
   const markersRef = useRef<Marker[]>([])
+  /** Display position per cafe (walking route snap end — matches path terminus). */
+  const cafeMarkerLngLatRef = useRef<Map<string, [number, number]>>(new Map())
+  /** Invalidates in-flight marker placement when results clear or update. */
+  const cafeMarkersGenerationRef = useRef(0)
   const popupRef = useRef<Popup | null>(null)
   const onCafeClickRef = useRef(onCafeClick)
+  /** Latest WGS84 fix for walking directions (updated via watchPosition). */
+  const userLngLatRef = useRef<[number, number] | null>(null)
   const [showLoadOverlay, setShowLoadOverlay] = useState(true)
   const [status, setStatus] = useState<MapStatus>(() =>
     MAPBOX_TOKEN ? "loading" : "no-token"
@@ -211,6 +401,28 @@ const MapPanel = forwardRef<MapPanelHandle, Props>(function MapPanel(
   useEffect(() => {
     onCafeClickRef.current = onCafeClick
   }, [onCafeClick])
+
+  useEffect(() => {
+    if (typeof navigator === "undefined" || !navigator.geolocation) return
+    const watchId = navigator.geolocation.watchPosition(
+      (pos) => {
+        const ll: [number, number] = [
+          pos.coords.longitude,
+          pos.coords.latitude,
+        ]
+        userLngLatRef.current = ll
+      },
+      () => {
+        userLngLatRef.current = null
+      },
+      {
+        enableHighAccuracy: true,
+        maximumAge: 10_000,
+        timeout: 20_000,
+      },
+    )
+    return () => navigator.geolocation.clearWatch(watchId)
+  }, [])
 
   useEffect(() => {
     if (!MAPBOX_TOKEN) return
@@ -239,6 +451,7 @@ const MapPanel = forwardRef<MapPanelHandle, Props>(function MapPanel(
         },
         center: SPLIT_CENTER,
         zoom: 16.1,
+        minZoom: 15,
         pitch: 52,
         bearing: -18,
         antialias: true,
@@ -314,6 +527,22 @@ const MapPanel = forwardRef<MapPanelHandle, Props>(function MapPanel(
           }
         )
 
+        addCafeRouteToMap(map)
+
+        if (typeof navigator !== "undefined" && navigator.geolocation) {
+          navigator.geolocation.getCurrentPosition(
+            (pos) => {
+              const ll: [number, number] = [
+                pos.coords.longitude,
+                pos.coords.latitude,
+              ]
+              userLngLatRef.current = ll
+            },
+            () => {},
+            { enableHighAccuracy: false, maximumAge: 60_000, timeout: 20_000 },
+          )
+        }
+
         setStatus("ready")
         onReady?.()
         window.setTimeout(() => setShowLoadOverlay(false), 260)
@@ -356,8 +585,11 @@ const MapPanel = forwardRef<MapPanelHandle, Props>(function MapPanel(
 
     return () => {
       cancelled = true
+      cafeMarkersGenerationRef.current += 1
+      cafeMarkerLngLatRef.current.clear()
       markersRef.current.forEach((m) => m.remove())
       markersRef.current = []
+      cafeMarkerLngLatRef.current.clear()
       popupRef.current?.remove()
       popupRef.current = null
       shadeRef.current?.destroy()
@@ -369,7 +601,30 @@ const MapPanel = forwardRef<MapPanelHandle, Props>(function MapPanel(
 
   useImperativeHandle(
     ref,
-    (): MapPanelHandle => ({
+    (): MapPanelHandle => {
+      const drawUserWalkingRouteToCafe = async (cafe: Cafe) => {
+        const map = mapRef.current
+        if (!map || !map.isStyleLoaded()) return
+        addCafeRouteToMap(map)
+
+        let user = userLngLatRef.current
+        if (!user) {
+          user = await requestFreshUserLngLat()
+          if (user) {
+            userLngLatRef.current = user
+          }
+        }
+
+        const from: [number, number] = user ?? SPLIT_CENTER
+        const leg = await fetchWalkingRouteLeg(
+          from,
+          [cafe.lng, cafe.lat],
+          MAPBOX_TOKEN,
+        )
+        setCafeRouteCoordinates(map, leg)
+      }
+
+      return {
       flyTo: (area) =>
         new Promise<void>((resolve) => {
           const map = mapRef.current
@@ -422,55 +677,85 @@ const MapPanel = forwardRef<MapPanelHandle, Props>(function MapPanel(
       setResults: (results, preference) => {
         const map = mapRef.current
         if (!map) return
+        cafeMarkersGenerationRef.current += 1
+        const generation = cafeMarkersGenerationRef.current
+        removeCafeRouteFromMap(map)
         markersRef.current.forEach((m) => m.remove())
         markersRef.current = []
+        cafeMarkerLngLatRef.current.clear()
         popupRef.current?.remove()
+
+        const lngLatForCafe = (cafe: Cafe): [number, number] =>
+          cafeMarkerLngLatRef.current.get(cafe.id) ?? [cafe.lng, cafe.lat]
 
         const openCafePopup = async (cafe: Cafe) => {
           const mapboxgl = (await import("mapbox-gl")).default
           const m = mapRef.current
           if (!m) return
           if (!popupRef.current) {
-            popupRef.current = new mapboxgl.Popup({
-              offset: 22,
-              closeButton: true,
-              closeOnClick: true,
-              maxWidth: "min(320px, 92vw)"
-            })
+            popupRef.current = new mapboxgl.Popup(CAFE_POPUP_OPTIONS)
           }
           popupRef.current
-            .setLngLat([cafe.lng, cafe.lat])
+            .setLngLat(lngLatForCafe(cafe))
             .setDOMContent(buildCafePopupDom(cafe))
             .addTo(m)
           onCafeClickRef.current?.(cafe)
+          await drawUserWalkingRouteToCafe(cafe)
         }
 
-        const setupMarker = async () => {
+        const setupMarkers = async () => {
           const mapboxgl = (await import("mapbox-gl")).default
-          results.forEach((r) => {
-            const el = makeMarkerEl(r.cafe, r.matches, preference, () => {
-              void openCafePopup(r.cafe)
-            })
-            const marker = new mapboxgl.Marker({
-              element: el,
-              anchor: "center"
-            })
-              .setLngLat([r.cafe.lng, r.cafe.lat])
-              .addTo(map)
-            markersRef.current.push(marker)
-          })
+
+          let user = userLngLatRef.current
+          if (!user) {
+            user = await requestFreshUserLngLat()
+            if (user) userLngLatRef.current = user
+          }
+          const from: [number, number] = user ?? SPLIT_CENTER
+
+          await Promise.all(
+            results.map(async (r) => {
+              const end = await walkingRouteDisplayEnd(
+                from,
+                r.cafe,
+                MAPBOX_TOKEN,
+              )
+              if (generation !== cafeMarkersGenerationRef.current) return
+
+              cafeMarkerLngLatRef.current.set(r.cafe.id, end)
+
+              const el = makeMarkerEl(r.cafe, r.matches, preference, () => {
+                void openCafePopup(r.cafe)
+              })
+              const marker = new mapboxgl.Marker({
+                element: el,
+                anchor: "center",
+              })
+                .setLngLat(end)
+                .addTo(map)
+              markersRef.current.push(marker)
+            }),
+          )
         }
-        void setupMarker()
+        void setupMarkers()
       },
       clearResults: () => {
+        cafeMarkersGenerationRef.current += 1
+        cafeMarkerLngLatRef.current.clear()
+        const map = mapRef.current
+        if (map) {
+          removeCafeRouteFromMap(map)
+        }
         markersRef.current.forEach((m) => m.remove())
         markersRef.current = []
         popupRef.current?.remove()
       },
       focusCafe: async (cafe) => {
+        const lngLat =
+          cafeMarkerLngLatRef.current.get(cafe.id) ?? [cafe.lng, cafe.lat]
         mapRef.current?.resize()
         mapRef.current?.flyTo({
-          center: [cafe.lng, cafe.lat],
+          center: lngLat,
           zoom: 18.2,
           pitch: 60,
           speed: 1.1,
@@ -480,27 +765,24 @@ const MapPanel = forwardRef<MapPanelHandle, Props>(function MapPanel(
         const map = mapRef.current
         if (!map) return
         if (!popupRef.current) {
-          popupRef.current = new mapboxgl.Popup({
-            offset: 22,
-            closeButton: true,
-            closeOnClick: true,
-            maxWidth: "min(320px, 92vw)"
-          })
+          popupRef.current = new mapboxgl.Popup(CAFE_POPUP_OPTIONS)
         }
         popupRef.current
-          .setLngLat([cafe.lng, cafe.lat])
+          .setLngLat(lngLat)
           .setDOMContent(buildCafePopupDom(cafe))
           .addTo(map)
+        await drawUserWalkingRouteToCafe(cafe)
       },
       resize: () => {
         mapRef.current?.resize()
-      }
-    }),
-    []
+      },
+    }
+  },
+  []
   )
 
   return (
-    <div className="relative h-full w-full overflow-hidden">
+    <div className="relative h-full w-full overflow-visible">
       <div ref={containerRef} className="absolute inset-0 z-0 h-full w-full" />
       <div className="pointer-events-none absolute inset-0 ring-1 ring-inset ring-terracotta/15" />
       {showLoadOverlay && <StatusOverlay status={status} />}
