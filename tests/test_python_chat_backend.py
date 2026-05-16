@@ -1,6 +1,8 @@
 import asyncio
 import json
+from datetime import datetime
 from unittest.mock import AsyncMock, patch
+from zoneinfo import ZoneInfo
 
 from fastapi.testclient import TestClient
 from langchain_core.messages import AIMessage, ToolMessage
@@ -211,6 +213,21 @@ def test_around_single_time_returns_bacvice_shade_payload() -> None:
     assert request["end"].endswith("16:30:00+01:00") or request["end"].endswith(
         "16:30:00+02:00"
     )
+
+
+def test_parser_ignores_iso_date_when_reading_afternoon_window() -> None:
+    pipeline = FollowTheShadePipeline(settings, settings.SPLIT_CAFE_SEED_PATH)
+    parsed = pipeline.parse_request(
+        "Find me somewhere shady to sit in Varos on 2026-05-16 this afternoon.",
+        now=datetime(2026, 5, 16, 12, tzinfo=ZoneInfo("Europe/Zagreb")),
+    )
+
+    assert parsed.location_label == "Varos, Split"
+    assert parsed.period == "afternoon"
+    assert parsed.start is not None
+    assert parsed.end is not None
+    assert parsed.start.hour == 14
+    assert parsed.end.hour == 18
 
 
 def test_time_clarification_keeps_thread_location_and_preference() -> None:

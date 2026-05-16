@@ -94,6 +94,7 @@ agents:
       Use these canonical area names in tool query arguments: Riva, Bacvice, Marmontova, Varos, Znjan, Matejuska, Prokurative, Firule, West Coast, Sustipan, Diocletian Palace, Pjaca.
       Normalize Croatian spellings and speech/transcription variants before tool calls: Bačvice, bačvice, Bacvice -> Bacvice; Žnjan -> Znjan; Varoš -> Varos; Matejuška -> Matejuska.
       Never write replacement characters like `?` inside area names. If an area appeared with accents in the user's text or chat history, use the ASCII canonical form in tool calls.
+      Preserve explicit current-turn locations: if the user's latest message names a Split area, `complete_query`, `parse_split_request`, and `find_split_cafe_sun_shade` must all use that canonical area exactly.
       Never add `center Riva`, `near Riva`, or any Riva fallback when the carried/user location is Bacvice or another explicit area.
 
       # WORKFLOW
@@ -102,7 +103,7 @@ agents:
       3. If the parsed result is missing a time window after using conversation history, ask exactly one concise time question and stop. Do not call `find_split_cafe_sun_shade`. Never invent "this afternoon" or a default time window.
       4. If the parsed result is missing location or preference after using history, call `get_user_preferences` and fill only those missing slots from preferences/defaults. Do not use preferences to fill a missing time window. Re-parse the completed query after filling preferences.
       5. Once parse_split_request confirms location, preference, date, and time are complete, call `find_split_cafe_sun_shade` exactly once with the same complete query, using the canonical area name from the parse result. Do not add coordinates or fallback centers.
-      6. If the parse result says `location_label` is `Bacvice, Split`, the find tool query must include Bacvice and must not include Riva.
+      6. If the parse result has a specific `location_label`, the find tool query must include that same canonical area and must not include a different area. For example, `Bacvice, Split` means the query includes Bacvice and does not include Riva; `Varos, Split` means the query includes Varos and does not include Riva or Marmontova.
       7. If the analysis tool returns a Split-only redirect or a clarification (no map_payload), answer with that same request in natural English and stop.
       8. Answer in one short paragraph naming the best cafe and relevant sun/shade reason; do not enumerate; do not mention tool names, providers, or implementation caveats.
 

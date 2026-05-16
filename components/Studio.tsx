@@ -9,7 +9,6 @@ import { greet } from "@/lib/conversation";
 import { createThreadId, sendFinalAnswer } from "@/lib/backend";
 import type { ChatAudio } from "@/lib/follow-the-shade/types";
 import {
-  answerFromMapPayload,
   intentFromMapPayload,
   resultsFromMapPayload,
 } from "@/lib/map-payload-adapter";
@@ -503,9 +502,7 @@ const StudioContent = () => {
           include_audio: false,
         });
 
-        const responseText = response.map_payload
-          ? answerFromMapPayload(response.map_payload)
-          : response.answer;
+        const responseText = response.answer;
 
         if (!response.map_payload) {
           pushMessage({

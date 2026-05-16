@@ -484,9 +484,7 @@ class FollowTheShadePipeline:
         if isinstance(raw_addr, str) and raw_addr.strip():
             normalized_addr = format_address_for_display(raw_addr)
             display_address = (
-                normalized_addr
-                if normalized_addr
-                else (cafe.get("area") or "")
+                normalized_addr if normalized_addr else (cafe.get("area") or "")
             )
         else:
             display_address = raw_addr
@@ -1030,7 +1028,7 @@ def _parse_time_window(
     date: datetime,
 ) -> tuple[datetime, datetime, Period] | None:
     explicit = re.search(
-        r"(?:from\s*)?(\d{1,2})(?::(\d{2}))?\s*(am|pm)?\s*(?:-|to|until|and)\s*(\d{1,2})(?::(\d{2}))?\s*(am|pm)?",
+        r"(?<![\d-])(?:from\s*)?(\d{1,2})(?::(\d{2}))?\s*(am|pm)?\s*(?:-|to|until|and)\s*(\d{1,2})(?::(\d{2}))?\s*(am|pm)?(?![\d-])",
         query,
     )
     if explicit:
@@ -1045,12 +1043,19 @@ def _parse_time_window(
         start_meridiem = start_meridiem or end_meridiem
         start_hour = _to_hour_24(int(raw_start_hour), start_meridiem)
         end_hour = _to_hour_24(int(raw_end_hour), end_meridiem)
+        start_minute = int(raw_start_minute or 0)
+        end_minute = int(raw_end_minute or 0)
+        if not (
+            _is_valid_clock_time(start_hour, start_minute)
+            and _is_valid_clock_time(end_hour, end_minute)
+        ):
+            return None
         start = datetime(
             date.year,
             date.month,
             date.day,
             start_hour,
-            int(raw_start_minute or 0),
+            start_minute,
             tzinfo=ZAGREB_TZ,
         )
         end = datetime(
@@ -1058,7 +1063,7 @@ def _parse_time_window(
             date.month,
             date.day,
             end_hour,
-            int(raw_end_minute or 0),
+            end_minute,
             tzinfo=ZAGREB_TZ,
         )
         period: Period = (
@@ -1076,6 +1081,8 @@ def _parse_time_window(
         raw_hour, raw_minute, meridiem = point.groups()
         hour = _to_daytime_hour_24(int(raw_hour), meridiem)
         minute = int(raw_minute or 0)
+        if not _is_valid_clock_time(hour, minute):
+            return None
         center = datetime(
             date.year,
             date.month,
@@ -1173,6 +1180,10 @@ def _to_daytime_hour_24(hour: int, meridiem: str | None) -> int:
     if 1 <= hour <= 7:
         return hour + 12
     return hour
+
+
+def _is_valid_clock_time(hour: int, minute: int) -> bool:
+    return 0 <= hour <= 23 and 0 <= minute <= 59
 
 
 def _weather_adjusted_exposure(

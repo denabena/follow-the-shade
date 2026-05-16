@@ -2,10 +2,19 @@
 
 import { FormEvent, useMemo, useState } from "react";
 import type { ChatResponse, MapPayload } from "@/lib/follow-the-shade/types";
+import { answerFromMapPayload } from "@/lib/map-payload-adapter";
 
 type ChatMessage = {
   role: "assistant" | "user";
   content: string;
+};
+
+type FlexibleChatResponse = ChatResponse & {
+  response?: unknown;
+  message?: unknown;
+  text?: unknown;
+  detail?: unknown;
+  error?: unknown;
 };
 
 const initialMessages: ChatMessage[] = [
@@ -56,11 +65,12 @@ export function ChatbotDemo() {
         throw new Error(`Chat request failed with ${response.status}`);
       }
 
-      const data = (await response.json()) as ChatResponse;
-      setPayload(data.map_payload);
+      const data = (await response.json()) as FlexibleChatResponse;
+      const assistantText = assistantTextFromResponse(data);
+      setPayload(data.map_payload ?? null);
       setMessages((current) => [
         ...current,
-        { role: "assistant", content: data.answer },
+        { role: "assistant", content: assistantText },
       ]);
     } catch (caught) {
       const message =
@@ -154,6 +164,37 @@ export function ChatbotDemo() {
   );
 }
 
+function assistantTextFromResponse(data: FlexibleChatResponse) {
+  const explicitText = firstNonEmptyString(
+    data.answer,
+    data.response,
+    data.message,
+    data.text,
+    data.detail,
+    data.error,
+  );
+  if (explicitText) {
+    return explicitText;
+  }
+  if (data.map_payload) {
+    return answerFromMapPayload(data.map_payload);
+  }
+  return "I checked that request for Split.";
+}
+
+function firstNonEmptyString(...values: unknown[]) {
+  for (const value of values) {
+    if (typeof value !== "string") {
+      continue;
+    }
+    const trimmed = value.trim();
+    if (trimmed) {
+      return trimmed;
+    }
+  }
+  return null;
+}
+
 function MapPayloadPreview({ payload }: { payload: MapPayload | null }) {
   const bounds = useMemo(() => {
     if (!payload) {
@@ -237,7 +278,9 @@ function MapPayloadPreview({ payload }: { payload: MapPayload | null }) {
                   </div>
                   <div className="mt-2 flex items-center justify-between text-xs text-stone-500">
                     <span>{result.exposure.label.replace("_", " ")}</span>
-                    <span>{Math.round(result.exposure.match_score * 100)}%</span>
+                    <span>
+                      {Math.round(result.exposure.match_score * 100)}%
+                    </span>
                   </div>
                 </div>
               </article>
