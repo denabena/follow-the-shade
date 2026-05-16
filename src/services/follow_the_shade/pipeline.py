@@ -51,7 +51,17 @@ class SplitArea:
 SPLIT_AREAS: tuple[SplitArea, ...] = (
     SplitArea(
         "Riva, Split",
-        ("riva", "old town", "central split"),
+        (
+            "riva",
+            "old town",
+            "central split",
+            "city center",
+            "city centre",
+            "center split",
+            "centre split",
+            "center",
+            "centre",
+        ),
         {"lat": 43.5081, "lng": 16.4391},
     ),
     SplitArea(
@@ -59,6 +69,7 @@ SPLIT_AREAS: tuple[SplitArea, ...] = (
         ("diocletian", "palace", "pjaca", "peristil"),
         {"lat": 43.5086, "lng": 16.4409},
     ),
+    SplitArea("Grad, Split", ("split grad",), {"lat": 43.5088, "lng": 16.4405}),
     SplitArea("Marmontova, Split", ("marmontova",), {"lat": 43.5102, "lng": 16.4382}),
     SplitArea(
         "Prokurative, Split",
@@ -66,18 +77,80 @@ SPLIT_AREAS: tuple[SplitArea, ...] = (
         {"lat": 43.5095, "lng": 16.4370},
     ),
     SplitArea("Matejuska, Split", ("matejuska",), {"lat": 43.5076, "lng": 16.4355}),
-    SplitArea("Varos, Split", ("varos",), {"lat": 43.5094, "lng": 16.4336}),
     SplitArea(
-        "Bacvice, Split", ("bacvice", "bacvice beach"), {"lat": 43.5039, "lng": 16.4514}
+        "Varos, Split",
+        ("varos", "veli varos"),
+        {"lat": 43.5094, "lng": 16.4336},
     ),
-    SplitArea("Firule, Split", ("firule",), {"lat": 43.5019, "lng": 16.4592}),
-    SplitArea("Znjan, Split", ("znjan",), {"lat": 43.5023, "lng": 16.4865}),
+    SplitArea(
+        "Lučac-Manuš, Split",
+        ("lucac-manus", "lucac manus", "lucac", "manus"),
+        {"lat": 43.5064, "lng": 16.4368},
+    ),
     SplitArea(
         "West Coast, Split",
         ("west coast", "zapadna obala"),
         {"lat": 43.5063, "lng": 16.4323},
     ),
+    SplitArea("Marjan, Split", ("marjan", "vidilica", "telegrin"), {"lat": 43.5142, "lng": 16.4275}),
+    SplitArea("Kasjuni, Split", ("kasjuni",), {"lat": 43.5088, "lng": 16.4187}),
+    SplitArea(
+        "Poljud, Split",
+        ("poljud",),
+        {"lat": 43.51944, "lng": 16.43167},
+    ),
+    SplitArea("Spinut, Split", ("spinut",), {"lat": 43.5175, "lng": 16.4178}),
+    SplitArea("Meje, Split", ("meje",), {"lat": 43.5138, "lng": 16.4078}),
     SplitArea("Sustipan, Split", ("sustipan",), {"lat": 43.5035, "lng": 16.4223}),
+    SplitArea(
+        "Bol, Split",
+        ("bol",),
+        {"lat": 43.5032, "lng": 16.4265},
+    ),
+    SplitArea(
+        "Bacvice, Split",
+        ("bacvice", "bacvice beach"),
+        {"lat": 43.5039, "lng": 16.4514},
+    ),
+    SplitArea("Firule, Split", ("firule",), {"lat": 43.5019, "lng": 16.4592}),
+    SplitArea("Lovret, Split", ("lovret",), {"lat": 43.5048, "lng": 16.4478}),
+    SplitArea("Znjan, Split", ("znjan",), {"lat": 43.5023, "lng": 16.4865}),
+    SplitArea("Trstenik, Split", ("trstenik",), {"lat": 43.5078, "lng": 16.4635}),
+    SplitArea("Mertojak, Split", ("mertojak",), {"lat": 43.5076, "lng": 16.4545}),
+    SplitArea(
+        "Blatine-Škrape, Split",
+        ("blatine-skrape", "blatine skrape", "blatine", "skrape"),
+        {"lat": 43.5132, "lng": 16.4668},
+    ),
+    SplitArea(
+        "Split 3, Split",
+        ("split 3", "treca cetvrt", "third district"),
+        {"lat": 43.5112, "lng": 16.4705},
+    ),
+    SplitArea("Pujanke, Split", ("pujanke",), {"lat": 43.5163, "lng": 16.4737}),
+    SplitArea("Sućidar, Split", ("sucidar",), {"lat": 43.5196, "lng": 16.4675}),
+    SplitArea("Visoka, Split", ("visoka",), {"lat": 43.5216, "lng": 16.4578}),
+    SplitArea("Lokve, Split", ("lokve",), {"lat": 43.5178, "lng": 16.4488}),
+    SplitArea("Gripe, Split", ("gripe",), {"lat": 43.5195, "lng": 16.4412}),
+    SplitArea("Plokite, Split", ("plokite",), {"lat": 43.5146, "lng": 16.4395}),
+    SplitArea("Kopilica, Split", ("kopilica",), {"lat": 43.5238, "lng": 16.4328}),
+    SplitArea("Kman, Split", ("kman",), {"lat": 43.5248, "lng": 16.4468}),
+    SplitArea(
+        "Ravne njive, Split",
+        ("ravne njive", "ravne"),
+        {"lat": 43.5295, "lng": 16.4638},
+    ),
+    SplitArea("Brda, Split", ("brda",), {"lat": 43.5348, "lng": 16.4725}),
+    SplitArea("Kocunar, Split", ("kocunar",), {"lat": 43.5148, "lng": 16.4798}),
+    SplitArea("Neslanovac, Split", ("neslanovac",), {"lat": 43.5395, "lng": 16.4878}),
+    SplitArea("Mejaši, Split", ("mejasi",), {"lat": 43.5428, "lng": 16.4978}),
+    SplitArea("Sirobuja, Split", ("sirobuja",), {"lat": 43.5078, "lng": 16.5028}),
+    SplitArea("Šine, Split", ("sine",), {"lat": 43.5298, "lng": 16.4395}),
+    SplitArea("Brodarica, Split", ("brodarica",), {"lat": 43.4998, "lng": 16.4688}),
+    SplitArea("Stobreč, Split", ("stobrec",), {"lat": 43.5036, "lng": 16.5748}),
+    SplitArea("Podstrana, Split", ("podstrana",), {"lat": 43.4888, "lng": 16.5585}),
+    SplitArea("Solin, Split", ("solin",), {"lat": 43.5442, "lng": 16.4928}),
+    SplitArea("Klis, Split", ("klis",), {"lat": 43.5588, "lng": 16.5228}),
 )
 
 
@@ -780,9 +853,26 @@ def _parse_preference(query: str) -> tuple[Preference, bool]:
     return "either", False
 
 
+def _alias_matches(normalized_query: str, alias: str) -> bool:
+    stripped = alias.strip()
+    if not stripped:
+        return False
+    if " " in stripped:
+        return stripped in normalized_query
+    if any(ch.isdigit() for ch in stripped):
+        return stripped in normalized_query
+    return (
+        re.search(
+            rf"(?<![a-z0-9]){re.escape(stripped)}(?![a-z0-9])",
+            normalized_query,
+        )
+        is not None
+    )
+
+
 def _find_area(query: str) -> tuple[SplitArea, bool]:
     for area in SPLIT_AREAS:
-        if any(alias in query for alias in area.aliases):
+        if any(_alias_matches(query, alias) for alias in area.aliases):
             return area, True
     return SPLIT_AREAS[0], False
 

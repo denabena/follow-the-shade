@@ -19,13 +19,28 @@ const SPLIT_AREAS: Array<{ label: string; aliases: string[]; center: LatLng }> =
   [
     {
       label: "Riva, Split",
-      aliases: ["riva", "old town", "central split", "center", "centre"],
+      aliases: [
+        "riva",
+        "old town",
+        "central split",
+        "city center",
+        "city centre",
+        "center split",
+        "centre split",
+        "center",
+        "centre",
+      ],
       center: { lat: 43.5081, lng: 16.4391 },
     },
     {
       label: "Diocletian Palace, Split",
       aliases: ["diocletian", "palace", "pjaca", "peristil"],
       center: { lat: 43.5086, lng: 16.4409 },
+    },
+    {
+      label: "Grad, Split",
+      aliases: ["split grad"],
+      center: { lat: 43.5088, lng: 16.4405 },
     },
     {
       label: "Marmontova, Split",
@@ -39,13 +54,58 @@ const SPLIT_AREAS: Array<{ label: string; aliases: string[]; center: LatLng }> =
     },
     {
       label: "Matejuska, Split",
-      aliases: ["matejuska", "matejuska"],
+      aliases: ["matejuska"],
       center: { lat: 43.5076, lng: 16.4355 },
     },
     {
       label: "Varos, Split",
-      aliases: ["varos", "varos"],
+      aliases: ["varos", "veli varos"],
       center: { lat: 43.5094, lng: 16.4336 },
+    },
+    {
+      label: "Lučac-Manuš, Split",
+      aliases: ["lucac-manus", "lucac manus", "lucac", "manus"],
+      center: { lat: 43.5064, lng: 16.4368 },
+    },
+    {
+      label: "West Coast, Split",
+      aliases: ["west coast", "zapadna obala"],
+      center: { lat: 43.5063, lng: 16.4323 },
+    },
+    {
+      label: "Marjan, Split",
+      aliases: ["marjan", "vidilica", "telegrin"],
+      center: { lat: 43.5142, lng: 16.4275 },
+    },
+    {
+      label: "Kasjuni, Split",
+      aliases: ["kasjuni"],
+      center: { lat: 43.5088, lng: 16.4187 },
+    },
+    {
+      label: "Poljud, Split",
+      aliases: ["poljud"],
+      center: { lat: 43.51944, lng: 16.43167 },
+    },
+    {
+      label: "Spinut, Split",
+      aliases: ["spinut"],
+      center: { lat: 43.5175, lng: 16.4178 },
+    },
+    {
+      label: "Meje, Split",
+      aliases: ["meje"],
+      center: { lat: 43.5138, lng: 16.4078 },
+    },
+    {
+      label: "Sustipan, Split",
+      aliases: ["sustipan"],
+      center: { lat: 43.5035, lng: 16.4223 },
+    },
+    {
+      label: "Bol, Split",
+      aliases: ["bol"],
+      center: { lat: 43.5032, lng: 16.4265 },
     },
     {
       label: "Bacvice, Split",
@@ -58,19 +118,134 @@ const SPLIT_AREAS: Array<{ label: string; aliases: string[]; center: LatLng }> =
       center: { lat: 43.5019, lng: 16.4592 },
     },
     {
+      label: "Lovret, Split",
+      aliases: ["lovret"],
+      center: { lat: 43.5048, lng: 16.4478 },
+    },
+    {
       label: "Znjan, Split",
       aliases: ["znjan"],
       center: { lat: 43.5023, lng: 16.4865 },
     },
     {
-      label: "West Coast, Split",
-      aliases: ["west coast", "zapadna obala"],
-      center: { lat: 43.5063, lng: 16.4323 },
+      label: "Trstenik, Split",
+      aliases: ["trstenik"],
+      center: { lat: 43.5078, lng: 16.4635 },
     },
     {
-      label: "Sustipan, Split",
-      aliases: ["sustipan"],
-      center: { lat: 43.5035, lng: 16.4223 },
+      label: "Mertojak, Split",
+      aliases: ["mertojak"],
+      center: { lat: 43.5076, lng: 16.4545 },
+    },
+    {
+      label: "Blatine-Škrape, Split",
+      aliases: ["blatine-skrape", "blatine skrape", "blatine", "skrape"],
+      center: { lat: 43.5132, lng: 16.4668 },
+    },
+    {
+      label: "Split 3, Split",
+      aliases: ["split 3", "treca cetvrt", "third district"],
+      center: { lat: 43.5112, lng: 16.4705 },
+    },
+    {
+      label: "Pujanke, Split",
+      aliases: ["pujanke"],
+      center: { lat: 43.5163, lng: 16.4737 },
+    },
+    {
+      label: "Sućidar, Split",
+      aliases: ["sucidar"],
+      center: { lat: 43.5196, lng: 16.4675 },
+    },
+    {
+      label: "Visoka, Split",
+      aliases: ["visoka"],
+      center: { lat: 43.5216, lng: 16.4578 },
+    },
+    {
+      label: "Lokve, Split",
+      aliases: ["lokve"],
+      center: { lat: 43.5178, lng: 16.4488 },
+    },
+    {
+      label: "Gripe, Split",
+      aliases: ["gripe"],
+      center: { lat: 43.5195, lng: 16.4412 },
+    },
+    {
+      label: "Plokite, Split",
+      aliases: ["plokite"],
+      center: { lat: 43.5146, lng: 16.4395 },
+    },
+    {
+      label: "Kopilica, Split",
+      aliases: ["kopilica"],
+      center: { lat: 43.5238, lng: 16.4328 },
+    },
+    {
+      label: "Kman, Split",
+      aliases: ["kman"],
+      center: { lat: 43.5248, lng: 16.4468 },
+    },
+    {
+      label: "Ravne njive, Split",
+      aliases: ["ravne njive", "ravne"],
+      center: { lat: 43.5295, lng: 16.4638 },
+    },
+    {
+      label: "Brda, Split",
+      aliases: ["brda"],
+      center: { lat: 43.5348, lng: 16.4725 },
+    },
+    {
+      label: "Kocunar, Split",
+      aliases: ["kocunar"],
+      center: { lat: 43.5148, lng: 16.4798 },
+    },
+    {
+      label: "Neslanovac, Split",
+      aliases: ["neslanovac"],
+      center: { lat: 43.5395, lng: 16.4878 },
+    },
+    {
+      label: "Mejaši, Split",
+      aliases: ["mejasi"],
+      center: { lat: 43.5428, lng: 16.4978 },
+    },
+    {
+      label: "Sirobuja, Split",
+      aliases: ["sirobuja"],
+      center: { lat: 43.5078, lng: 16.5028 },
+    },
+    {
+      label: "Šine, Split",
+      aliases: ["sine"],
+      center: { lat: 43.5298, lng: 16.4395 },
+    },
+    {
+      label: "Brodarica, Split",
+      aliases: ["brodarica"],
+      center: { lat: 43.4998, lng: 16.4688 },
+    },
+    {
+      label: "Stobreč, Split",
+      aliases: ["stobrec"],
+      center: { lat: 43.5036, lng: 16.5748 },
+    },
+    {
+      label: "Podstrana, Split",
+      aliases: ["podstrana"],
+      center: { lat: 43.4888, lng: 16.5585 },
+    },
+    {
+      label: "Solin, Split",
+      aliases: ["solin"],
+      center: { lat: 43.5442, lng: 16.4928 },
+    },
+    {
+      label: "Klis, Split",
+      aliases: ["klis"],
+      center: { lat: 43.5588, lng: 16.5228 },
     },
   ];
 
@@ -399,10 +574,19 @@ function parsePreference(query: string): ExposurePreference {
   return "either";
 }
 
+function aliasMatches(query: string, alias: string): boolean {
+  const s = alias.trim();
+  if (!s) return false;
+  if (s.includes(" ")) return query.includes(s);
+  if (/\d/.test(s)) return query.includes(s);
+  const escaped = s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return new RegExp(`(?<![a-z0-9])${escaped}(?![a-z0-9])`).test(query);
+}
+
 function findArea(query: string): { label: string; center: LatLng } {
   return (
     SPLIT_AREAS.find((area) =>
-      area.aliases.some((alias) => query.includes(alias)),
+      area.aliases.some((alias) => aliasMatches(query, alias)),
     ) ?? SPLIT_AREAS[0]
   );
 }

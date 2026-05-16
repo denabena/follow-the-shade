@@ -451,7 +451,7 @@ const MapPanel = forwardRef<MapPanelHandle, Props>(function MapPanel(
         },
         center: SPLIT_CENTER,
         zoom: 16.1,
-        minZoom: 15,
+        minZoom: 12,
         pitch: 52,
         bearing: -18,
         antialias: true,
